@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { HardHat, Filter, Search, Upload, FileText, CheckCircle, Clock, Eye, Plus } from 'lucide-react';
+import { HardHat, Filter, Search, Upload, FileText, CheckCircle, Clock, Eye, Plus, Wallet } from 'lucide-react';
 import { ErrorBoundary } from './ErrorBoundary';
+import { getMandatForSite } from '../utils/permissions';
+import { computeChantierFee } from '../utils/feeSchedule';
 
 export default function Travaux() {
-  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention } = useStore();
+  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention, users, feeSchedules } = useStore();
   
   // 🔒 VALIDATION DES DÉPENDANCES CRITIQUES
   if (!Array.isArray(interventions) || !Array.isArray(sites) || !currentRole) {
@@ -287,7 +289,44 @@ export default function Travaux() {
         </div>
       </div>
 
-      {/* Header avec statistiques */}
+      {/* Synthèse des honoraires PM — le chiffre à présenter à la direction */}
+      {(currentRole === 'PM' || currentRole === 'DT') && (() => {
+        const currentYear = new Date().getFullYear();
+        const eligible = (interventions || []).filter(i =>
+          i.amount && (i.status === 'Réalisée' || i.status === 'Clôturée') &&
+          new Date(i.dateRequested).getFullYear() === currentYear
+        );
+        let totalFees = 0;
+        let totalNegotiated = 0;
+        eligible.forEach(i => {
+          const mandat = getMandatForSite(i.siteId, users, sites);
+          const schedule = (feeSchedules || []).find(s => s.mandat === mandat);
+          if (schedule && i.amount) {
+            const { feeAmount, negotiatedAboveAmount } = computeChantierFee(i.amount, schedule);
+            totalFees += feeAmount;
+            totalNegotiated += negotiatedAboveAmount || 0;
+          }
+        });
+        if (eligible.length === 0) return null;
+        return (
+          <div className="card-unified p-4 border-l-4 border-green-500 bg-green-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-green-100 p-2 rounded-lg mr-3">
+                  <Wallet className="w-5 h-5 text-green-700" />
+                </div>
+                <div>
+                  <h4 className="text-base font-semibold text-green-900">Honoraires PM générés en {currentYear}</h4>
+                  <p className="text-sm text-green-700 mt-1">
+                    {totalFees.toLocaleString(undefined, { maximumFractionDigits: 0 })}€ calculés sur {eligible.length} chantier{eligible.length > 1 ? 's' : ''} réalisé{eligible.length > 1 ? 's' : ''}
+                    {totalNegotiated > 0 && ` (+ ${totalNegotiated.toLocaleString()}€ à négocier de gré à gré au-delà des barèmes)`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="card-unified card-hover p-4">
           <div className="flex items-center">
@@ -417,6 +456,11 @@ export default function Travaux() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Montant
                 </th>
+                {(currentRole === 'PM' || currentRole === 'DT') && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Honoraires PM
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Prestataire
                 </th>
@@ -466,6 +510,25 @@ export default function Travaux() {
                       {(intervention && intervention.amount) ? intervention.amount.toLocaleString() : '—'}€
                     </div>
                   </td>
+                  {(currentRole === 'PM' || currentRole === 'DT') && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {(() => {
+                        if (!intervention?.amount) return <span className="text-gray-400 text-sm">—</span>;
+                        const mandat = getMandatForSite(intervention.siteId, users, sites);
+                        const schedule = (feeSchedules || []).find(s => s.mandat === mandat);
+                        if (!schedule) return <span className="text-gray-400 text-xs">Barème non défini ({mandat || 'mandat inconnu'})</span>;
+                        const { feeAmount, negotiatedAboveAmount } = computeChantierFee(intervention.amount, schedule);
+                        return (
+                          <div>
+                            <div className="text-sm font-medium text-green-700">{feeAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}€</div>
+                            {negotiatedAboveAmount && (
+                              <div className="text-xs text-amber-600">+ {negotiatedAboveAmount.toLocaleString()}€ de gré à gré</div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
                       {(() => {

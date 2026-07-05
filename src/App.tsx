@@ -17,6 +17,7 @@ import Connexion from './components/Connexion';
 import Travaux from './components/Travaux';
 import DemandePrestation from './components/DemandePrestation';
 import Messagerie from './components/Messagerie';
+import Honoraires from './components/Honoraires';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Zustand + persist hydrate le store de façon synchrone au premier rendu
@@ -89,6 +90,19 @@ function App() {
           );
         }
         return <Connexion />;
+      case 'honoraires':
+        // Même logique que Connexion : la définition des barèmes est une
+        // décision de gouvernance réservée au DT, pas une action PM/Propriétaire.
+        if (currentRole !== 'DT') {
+          return (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center max-w-md mx-auto mt-12">
+              <p className="text-gray-600">
+                La définition des barèmes d'honoraires est réservée au Directeur Technique.
+              </p>
+            </div>
+          );
+        }
+        return <Honoraires />;
       case 'travaux':
         return <Travaux />;
       case 'demande-prestation':

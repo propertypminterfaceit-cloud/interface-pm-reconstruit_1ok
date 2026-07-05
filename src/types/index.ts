@@ -16,6 +16,7 @@ export interface Site {
   typologie: ('IGH' | 'ERP' | 'TERTIAIRE' | 'LOGISTIQUE' | 'HOTEL')[];
   surface: number;
   year: number;
+  mandat?: string; // ex: "PIMCO", "Allianz" — portefeuille/mandat auquel le site appartient
   energyClass?: string;
   heatingType?: string;
   coolingType?: string;

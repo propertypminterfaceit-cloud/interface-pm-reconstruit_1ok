@@ -5,6 +5,7 @@ import {
   BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
   DemandePrestation, BPUItem, EnergyConnector, EnergyReading
 } from '../types';
+import { FeeSchedule, FeeTier } from '../utils/feeSchedule';
 import { generateMockData, generateEnergyReadingsForSite } from '../utils/mockData';
 
 interface AppState {
@@ -31,6 +32,7 @@ interface AppState {
   bpuItems: BPUItem[];
   energyConnectors: EnergyConnector[];
   energyReadings: EnergyReading[];
+  feeSchedules: FeeSchedule[];
   
   // Actions
   setCurrentRole: (role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => void;
@@ -69,6 +71,10 @@ interface AppState {
   connectEnergyProvider: (siteId: string, provider: EnergyConnector['provider'], apiEndpoint?: string) => void;
   disconnectEnergyProvider: (connectorId: string) => void;
   updateEnergyConnector: (id: string, connector: Partial<EnergyConnector>) => void;
+
+  // Réservé au DT côté UI : le barème d'honoraires est une décision de gouvernance,
+  // pas une opération quotidienne du PM.
+  upsertFeeSchedule: (mandat: string, tiers: FeeTier[]) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -281,6 +287,15 @@ export const useStore = create<AppState>()(
           c.id === id ? { ...c, ...connectorUpdate } : c
         )
       })),
+
+      upsertFeeSchedule: (mandat, tiers) => set((state) => {
+        const existing = (state.feeSchedules || []).find(s => s.mandat === mandat);
+        return {
+          feeSchedules: existing
+            ? state.feeSchedules.map(s => s.mandat === mandat ? { mandat, tiers } : s)
+            : [...(state.feeSchedules || []), { mandat, tiers }]
+        };
+      }),
     }),
     {
       name: 'interface-pm-storage',
@@ -305,7 +320,8 @@ export const useStore = create<AppState>()(
         demandesPrestation: state.demandesPrestation,
         bpuItems: state.bpuItems,
         energyConnectors: state.energyConnectors,
-        energyReadings: state.energyReadings
+        energyReadings: state.energyReadings,
+        feeSchedules: state.feeSchedules
       }),
       migrate: (persistedState: any, version: number) => {
         const mockData = generateMockData();
@@ -328,7 +344,8 @@ export const useStore = create<AppState>()(
           demandesPrestation: Array.isArray(persistedState?.demandesPrestation) ? persistedState.demandesPrestation : mockData.demandesPrestation,
           bpuItems: Array.isArray(persistedState?.bpuItems) ? persistedState.bpuItems : mockData.bpuItems,
           energyConnectors: Array.isArray(persistedState?.energyConnectors) ? persistedState.energyConnectors : mockData.energyConnectors,
-          energyReadings: Array.isArray(persistedState?.energyReadings) ? persistedState.energyReadings : mockData.energyReadings
+          energyReadings: Array.isArray(persistedState?.energyReadings) ? persistedState.energyReadings : mockData.energyReadings,
+          feeSchedules: Array.isArray(persistedState?.feeSchedules) ? persistedState.feeSchedules : mockData.feeSchedules
         };
       },
       onRehydrateStorage: () => (state) => {

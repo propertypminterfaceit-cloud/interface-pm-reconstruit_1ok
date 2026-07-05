@@ -3,6 +3,7 @@ import {
   BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
   DemandePrestation, BPUItem, EnergyConnector, EnergyReading
 } from '../types';
+import { FEE_SCHEDULES, FeeSchedule } from './feeSchedule';
 
 // Génère 12 mois de données de consommation par site, à partir de la surface
 // et de la typologie du site (plus réaliste qu'un tirage purement aléatoire).
@@ -88,6 +89,7 @@ export function generateMockData() {
   const sites: Site[] = [
     {
       id: '1',
+      mandat: 'PIMCO',
       name: 'Tour Montparnasse',
       address: '33 Avenue du Maine, 75015 Paris',
       typologie: ['IGH', 'TERTIAIRE'],
@@ -103,6 +105,7 @@ export function generateMockData() {
     },
     {
       id: '2',
+      mandat: 'Allianz',
       name: 'Entrepôt Logistique Roissy',
       address: 'Zone Industrielle, 95700 Roissy-en-France',
       typologie: ['LOGISTIQUE'],
@@ -118,6 +121,7 @@ export function generateMockData() {
     },
     {
       id: '3',
+      mandat: 'Allianz',
       name: 'Hôtel Mercure Lyon',
       address: '129 Rue Servient, 69003 Lyon',
       typologie: ['HOTEL', 'ERP'],
@@ -133,6 +137,7 @@ export function generateMockData() {
     },
     {
       id: '4',
+      mandat: 'PIMCO',
       name: 'Centre Commercial Confluence',
       address: '112 Cours Charlemagne, 69002 Lyon',
       typologie: ['ERP', 'TERTIAIRE'],
@@ -148,6 +153,7 @@ export function generateMockData() {
     },
     {
       id: '5',
+      mandat: 'Allianz',
       name: 'Bureaux Défense',
       address: '1 Parvis de la Défense, 92800 Puteaux',
       typologie: ['TERTIAIRE', 'IGH'],
@@ -715,6 +721,7 @@ export function generateMockData() {
     demandesPrestation,
     bpuItems,
     energyConnectors,
-    energyReadings
+    energyReadings,
+    feeSchedules: JSON.parse(JSON.stringify(FEE_SCHEDULES)) as FeeSchedule[]
   };
 }

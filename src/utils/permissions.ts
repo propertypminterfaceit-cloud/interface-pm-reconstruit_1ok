@@ -42,3 +42,19 @@ export function filterBySiteAccess<T extends { siteId?: string }>(
   const visibleIds = new Set(getVisibleSiteIds(currentUser, currentRole, allSites));
   return items.filter(item => !item.siteId || visibleIds.has(item.siteId));
 }
+
+/**
+ * Retrouve le mandat (ex: "PIMCO", "Allianz") d'un site. Le mandat est une
+ * classification du SITE lui-même (son portefeuille contractuel), pas une
+ * déduction indirecte via l'Asset Manager qui le consulte — un mandat comme
+ * PIMCO peut représenter des dizaines de sites, indépendamment de qui est
+ * actuellement assigné pour les superviser.
+ * En repli (sites plus anciens sans classification directe), on déduit
+ * encore du premier Propriétaire rattaché, pour rester rétrocompatible.
+ */
+export function getMandatForSite(siteId: string, users: User[], sites?: Site[]): string | undefined {
+  const site = sites?.find(s => s.id === siteId);
+  if (site?.mandat) return site.mandat;
+  const owner = users.find(u => u.role === 'Propriétaire' && (u.sites || []).includes(siteId));
+  return owner?.mandat;
+}
