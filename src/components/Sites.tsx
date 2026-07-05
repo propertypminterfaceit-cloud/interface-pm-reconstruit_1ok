@@ -5,10 +5,11 @@ import { Site } from '../types';
 import { filterSitesByUser } from '../utils/permissions';
 
 export default function Sites() {
-  const { sites, users, prestataires, addSite, currentRole, currentUser } = useStore();
+  const { sites, users, prestataires, addSite, updateSite, currentRole, currentUser } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showSiteDetails, setShowSiteDetails] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [editMandat, setEditMandat] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTypologie, setFilterTypologie] = useState('');
@@ -20,6 +21,7 @@ export default function Sites() {
     typologie: [] as string[],
     surface: 0,
     year: new Date().getFullYear(),
+    mandat: '',
     energyClass: '',
     heatingType: '',
     coolingType: '',
@@ -79,6 +81,7 @@ export default function Sites() {
       typologie: [],
       surface: 0,
       year: new Date().getFullYear(),
+      mandat: '',
       energyClass: '',
       heatingType: '',
       coolingType: '',
@@ -176,11 +179,18 @@ export default function Sites() {
 
   const handleViewSite = (site: Site) => {
     setSelectedSite(site);
+    setEditMandat(site.mandat || '');
     setShowSiteDetails(true);
   };
 
   return (
     <div className="space-y-6">
+      {/* Suggestions de mandats existants, partagées par tous les champs mandat du composant */}
+      <datalist id="mandats-existants">
+        {Array.from(new Set(sites.map(s => s.mandat).filter((m): m is string => !!m))).map(m => (
+          <option key={m} value={m} />
+        ))}
+      </datalist>
       {/* Page Header */}
       <div className="card-unified p-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -259,6 +269,9 @@ export default function Sites() {
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">{site.name}</h3>
                   <p className="text-sm text-gray-600 mt-1">{site.address}</p>
+                  {site.mandat && (
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">{site.mandat}</span>
+                  )}
                 </div>
               </div>
               <span className={`status-badge ${getStatusColor(site.status)}`}>
@@ -406,6 +419,19 @@ export default function Sites() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mandat (portefeuille propriétaire)</label>
+                  <input
+                    type="text"
+                    list="mandats-existants"
+                    value={newSite.mandat}
+                    onChange={(e) => setNewSite(prev => ({ ...prev, mandat: e.target.value }))}
+                    placeholder="Ex: PIMCO, Allianz..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Détermine le barème d'honoraires applicable aux travaux de ce site.</p>
                 </div>
 
                 <div>
@@ -670,6 +696,29 @@ export default function Sites() {
                   {selectedSite.energyClass && <p><strong>Classe énergétique:</strong> {selectedSite.energyClass}</p>}
                   <p><strong>Score conformité:</strong> {selectedSite.conformityScore}%</p>
                   <p><strong>Statut:</strong> {selectedSite.status}</p>
+                  <div className="pt-2 border-t border-gray-200 mt-2">
+                    <strong>Mandat :</strong>{' '}
+                    {currentRole === 'DT' ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="text"
+                          list="mandats-existants"
+                          value={editMandat}
+                          onChange={(e) => setEditMandat(e.target.value)}
+                          placeholder="Ex: PIMCO, Allianz..."
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                        <button
+                          onClick={() => updateSite(selectedSite.id, { mandat: editMandat || undefined })}
+                          className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Enregistrer
+                        </button>
+                      </div>
+                    ) : (
+                      <span>{selectedSite.mandat || 'Non classé'}</span>
+                    )}
+                  </div>
                 </div>
               </div>
 

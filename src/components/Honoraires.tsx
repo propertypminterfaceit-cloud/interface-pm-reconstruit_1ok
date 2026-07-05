@@ -6,13 +6,23 @@ import { FeeTier } from '../utils/feeSchedule';
 export default function Honoraires() {
   const { sites, feeSchedules, upsertFeeSchedule } = useStore();
 
-  // Un mandat, c'est avant tout un classement de sites (ex: PIMCO = 20 sites).
-  // On part donc des sites pour lister les mandats réellement en jeu, pas
-  // uniquement des barèmes déjà configurés (un mandat peut exister sans
-  // barème défini pour l'instant).
-  const mandats = Array.from(new Set(sites.map(s => s.mandat).filter((m): m is string => !!m)));
+  // Un mandat peut exister de deux façons : parce qu'au moins un site lui est
+  // déjà rattaché, OU parce que le DT l'a créé à l'avance (barème préparé
+  // avant même d'y attacher un premier site — utile pour un nouveau client).
+  const mandats = Array.from(new Set([
+    ...sites.map(s => s.mandat).filter((m): m is string => !!m),
+    ...feeSchedules.map(s => s.mandat)
+  ]));
 
   const [draftTiers, setDraftTiers] = useState<Record<string, FeeTier[]>>({});
+  const [newMandatName, setNewMandatName] = useState('');
+
+  const handleCreateMandat = () => {
+    const name = newMandatName.trim();
+    if (!name || mandats.includes(name)) return;
+    upsertFeeSchedule(name, []);
+    setNewMandatName('');
+  };
 
   const getTiers = (mandat: string): FeeTier[] => {
     if (draftTiers[mandat]) return draftTiers[mandat];
@@ -67,6 +77,31 @@ export default function Honoraires() {
           <p className="text-gray-500">Aucun mandat classé pour le moment — renseignez le champ "mandat" sur vos sites.</p>
         </div>
       )}
+
+      {/* Création d'un nouveau mandat, indépendamment de tout site existant */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">Créer un nouveau mandat</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Préparez le barème d'honoraires d'un nouveau client avant même de lui rattacher un site — celui-ci apparaîtra ensuite dans les suggestions lors de la création/édition d'un site.
+        </p>
+        <div className="flex items-center gap-2 max-w-md">
+          <input
+            type="text"
+            value={newMandatName}
+            onChange={(e) => setNewMandatName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateMandat()}
+            placeholder="Ex: Amundi"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+          <button
+            onClick={handleCreateMandat}
+            disabled={!newMandatName.trim() || mandats.includes(newMandatName.trim())}
+            className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            <Plus className="w-4 h-4 mr-1" /> Créer
+          </button>
+        </div>
+      </div>
 
       {mandats.map(mandat => {
         const siteCount = sites.filter(s => s.mandat === mandat).length;

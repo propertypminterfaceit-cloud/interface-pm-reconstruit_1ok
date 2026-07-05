@@ -10,13 +10,22 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { 
     currentRole, currentUser, activeTab, setActiveTab, switchDemoUser, isDemoMode,
-    interventions, budgetPPA, demandesPrestation, documents, users
+    interventions, budgetPPA, demandesPrestation, documents, users, messages
   } = useStore();
   
   const tabs = roleConfig[currentRole];
 
   // Calculer les validations en attente pour chaque module
   const getPendingValidations = (moduleId: string) => {
+    // Les messages non lus concernent tous les rôles, pas seulement PM/DT —
+    // évalué avant le filtre ci-dessous qui ne s'applique qu'aux validations métier.
+    if (moduleId === 'messagerie') {
+      if (!currentUser) return 0;
+      return (messages || []).filter(m =>
+        !m.read && (m.toId === currentUser.id || (!m.toId && m.to === currentUser.name))
+      ).length;
+    }
+
     if (currentRole !== 'PM' && currentRole !== 'DT') return 0;
     
     let count = 0;
