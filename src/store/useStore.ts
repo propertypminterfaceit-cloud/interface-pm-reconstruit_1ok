@@ -49,6 +49,7 @@ interface AppState {
   updatePrestataire: (id: string, prestataire: Partial<Prestataire>) => void;
   addDocument: (document: Document) => void;
   updateDocument: (id: string, document: Partial<Document>) => void;
+  archiveDocumentsForYear: (year: number) => void;
   addBudgetPPA: (budget: BudgetPPA) => void;
   updateBudgetPPA: (id: string, budget: Partial<BudgetPPA>) => void;
   addSinistre: (sinistre: Sinistre) => void;
@@ -137,6 +138,19 @@ export const useStore = create<AppState>()(
         documents: (state.documents || []).map(document => 
           document.id === id ? { ...document, ...documentUpdate } : document
         )
+      })),
+      // Archive (snapshot figé) tous les documents dont la date d'upload tombe
+      // dans l'année donnée et qui ne sont pas déjà archivés. Les documents ne
+      // sont jamais supprimés : ils passent simplement dans la vue "Archives",
+      // distincte des documents encore actifs/en cours.
+      archiveDocumentsForYear: (year) => set((state) => ({
+        documents: (state.documents || []).map(document => {
+          const documentYear = new Date(document.uploadDate).getFullYear();
+          if (documentYear === year && !document.archivedYear) {
+            return { ...document, archivedYear: year };
+          }
+          return document;
+        })
       })),
       
       addBudgetPPA: (budget) => set((state) => ({ 

@@ -1,33 +1,61 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { FileText, Upload, Filter, Search, Eye, Download, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { FileText, Upload, Filter, Search, Eye, Download, CheckCircle, Clock, XCircle, Archive, FolderOpen } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
+import { Document } from '../types';
+import { getDataRoomCategory, DATA_ROOM_CATEGORIES, DataRoomCategory } from '../utils/documentCategories';
 
 export default function Documents() {
-  const { documents, sites, addDocument, currentRole } = useStore();
+  const { documents, sites, addDocument, currentRole, archiveDocumentsForYear } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSite, setFilterSite] = useState('');
+  const [filterCategory, setFilterCategory] = useState<DataRoomCategory | ''>('');
+  const [viewMode, setViewMode] = useState<'actifs' | 'archives'>('actifs');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   const [newDocument, setNewDocument] = useState({
     name: '',
-    type: 'RMA' as 'RMA' | 'RME' | 'Contrats' | 'Interventions' | 'Sinistres' | 'Conformité' | 'PPA' | 'Autres',
+    type: 'RMA' as 'RMA' | 'RME' | 'Contrats' | 'Interventions' | 'Sinistres' | 'Conformité' | 'PPA' | 'ESG' | 'Autres',
     siteId: '',
     size: '1.2 MB'
   });
 
-  const filteredDocuments = documents.filter(document => {
+  const currentYear = new Date().getFullYear();
+  const archivableYears = Array.from(
+    new Set<number>((documents || []).filter(d => !d.archivedYear).map(d => new Date(d.uploadDate).getFullYear()))
+  ).sort();
+
+  const scopedDocuments = documents.filter(document =>
+    viewMode === 'archives' ? !!document.archivedYear : !document.archivedYear
+  );
+
+  const filteredDocuments = scopedDocuments.filter(document => {
     const matchesSearch = document.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = !filterType || document.type === filterType;
     const matchesStatus = !filterStatus || document.status === filterStatus;
     const matchesSite = !filterSite || document.siteId === filterSite;
+    const matchesCategory = !filterCategory || getDataRoomCategory(document.type) === filterCategory;
     
-    return matchesSearch && matchesType && matchesStatus && matchesSite;
+    return matchesSearch && matchesType && matchesStatus && matchesSite && matchesCategory;
   });
+
+  const categoryCounts = DATA_ROOM_CATEGORIES.map(category => ({
+    category,
+    count: scopedDocuments.filter(d => getDataRoomCategory(d.type) === category).length
+  }));
+
+  const handleArchiveYear = (year: number) => {
+    const count = (documents || []).filter(d => !d.archivedYear && new Date(d.uploadDate).getFullYear() === year).length;
+    const confirmed = window.confirm(
+      `Archiver les ${count} document(s) de ${year} ? Ils resteront consultables dans l'onglet "Archives", en lecture seule, séparés des documents actifs.`
+    );
+    if (!confirmed) return;
+    archiveDocumentsForYear(year);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -56,6 +84,7 @@ export default function Documents() {
       case 'Sinistres': return 'bg-red-100 text-red-800';
       case 'Conformité': return 'bg-yellow-100 text-yellow-800';
       case 'PPA': return 'bg-indigo-100 text-indigo-800';
+      case 'ESG': return 'bg-emerald-100 text-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -88,13 +117,13 @@ export default function Documents() {
   };
 
   const documentStats = {
-    total: documents.length,
-    valides: documents.filter(d => d.status === 'Validé').length,
-    enAttente: documents.filter(d => d.status === 'En attente').length,
-    rejetes: documents.filter(d => d.status === 'Rejeté').length
+    total: scopedDocuments.length,
+    valides: scopedDocuments.filter(d => d.status === 'Validé').length,
+    enAttente: scopedDocuments.filter(d => d.status === 'En attente').length,
+    rejetes: scopedDocuments.filter(d => d.status === 'Rejeté').length
   };
 
-  const documentTypes = ['RMA', 'RME', 'Contrats', 'Interventions', 'Sinistres', 'Conformité', 'PPA', 'Autres'];
+  const documentTypes = ['RMA', 'RME', 'Contrats', 'Interventions', 'Sinistres', 'Conformité', 'PPA', 'ESG', 'Autres'];
 
   return (
     <div className="space-y-6">
@@ -145,10 +174,10 @@ export default function Documents() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-          <p className="text-gray-600">{documents.length} documents au total</p>
+          <p className="text-gray-600">{scopedDocuments.length} document{scopedDocuments.length > 1 ? 's' : ''} {viewMode === 'archives' ? 'archivés' : 'actifs'}</p>
         </div>
         
-        {currentRole !== 'Propriétaire' && (
+        {currentRole !== 'Propriétaire' && viewMode === 'actifs' && (
           <button
             onClick={() => setShowUploadForm(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -157,6 +186,55 @@ export default function Documents() {
             Uploader un document
           </button>
         )}
+      </div>
+
+      {/* Onglets Data Room : documents actifs vs archives annuelles */}
+      <div className="flex items-center justify-between bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex space-x-1">
+          <button
+            onClick={() => setViewMode('actifs')}
+            className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium ${viewMode === 'actifs' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <FolderOpen className="w-4 h-4 mr-2" /> Documents actifs
+          </button>
+          <button
+            onClick={() => setViewMode('archives')}
+            className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium ${viewMode === 'archives' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <Archive className="w-4 h-4 mr-2" /> Archives
+          </button>
+        </div>
+        {(currentRole === 'PM' || currentRole === 'DT') && viewMode === 'actifs' && archivableYears.filter(y => y < currentYear).length > 0 && (
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-gray-500">Archiver une année révolue :</span>
+            {archivableYears.filter(y => y < currentYear).map(year => (
+              <button
+                key={year}
+                onClick={() => handleArchiveYear(year)}
+                className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                Archiver {year}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Résumé Data Room par catégorie (classement automatique) */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Data room — classement par catégorie</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {categoryCounts.map(({ category, count }) => (
+            <button
+              key={category}
+              onClick={() => setFilterCategory(filterCategory === category ? '' : category)}
+              className={`p-3 rounded-lg border text-left transition-colors ${filterCategory === category ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+            >
+              <p className="text-xs text-gray-500">{category}</p>
+              <p className="text-xl font-bold text-gray-900">{count}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Filtres */}
@@ -266,6 +344,7 @@ export default function Documents() {
                     <span className={`px-2 py-1 text-xs font-medium rounded ${getTypeColor(document.type)}`}>
                       {document.type}
                     </span>
+                    <div className="text-xs text-gray-400 mt-1">{getDataRoomCategory(document.type)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

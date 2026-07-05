@@ -4,6 +4,7 @@ export const roleConfig = {
     // UNIVERS 1 — PATRIMOINE & STRUCTURE
     { id: 'sites', label: 'Sites', icon: 'Building', group: 'PATRIMOINE & STRUCTURE' },
     { id: 'equipe', label: 'Équipes', icon: 'UserCheck', group: 'PATRIMOINE & STRUCTURE' },
+    { id: 'messagerie', label: 'Messagerie', icon: 'MessageCircle', group: 'PATRIMOINE & STRUCTURE' },
     // UNIVERS 2 — CONFORMITÉ & ESG
     { id: 'conformite', label: 'Conformité réglementaire', icon: 'Shield', group: 'CONFORMITÉ & ESG' },
     { id: 'esg', label: 'ESG', icon: 'Leaf', group: 'CONFORMITÉ & ESG' },
@@ -24,6 +25,7 @@ export const roleConfig = {
     // UNIVERS 1 — PATRIMOINE & STRUCTURE
     { id: 'sites', label: 'Sites', icon: 'Building', group: 'PATRIMOINE & STRUCTURE' },
     { id: 'equipe', label: 'Équipes', icon: 'UserCheck', group: 'PATRIMOINE & STRUCTURE' },
+    { id: 'messagerie', label: 'Messagerie', icon: 'MessageCircle', group: 'PATRIMOINE & STRUCTURE' },
     // UNIVERS 2 — CONFORMITÉ & ESG
     { id: 'conformite', label: 'Conformité réglementaire', icon: 'Shield', group: 'CONFORMITÉ & ESG' },
     { id: 'esg', label: 'ESG', icon: 'Leaf', group: 'CONFORMITÉ & ESG' },
@@ -48,6 +50,7 @@ export const roleConfig = {
     { id: 'interventions', label: 'Urgence & Ticket', icon: 'Wrench' },
     { id: 'travaux', label: 'Travaux', icon: 'HardHat' },
     { id: 'demande-prestation', label: 'Demande de prestation', icon: 'ClipboardList' },
+    { id: 'messagerie', label: 'Messagerie', icon: 'MessageCircle' },
   ],
   Propriétaire: [
     { id: 'dashboard', label: 'Dashboard', icon: 'Home' },
@@ -58,5 +61,6 @@ export const roleConfig = {
     { id: 'sinistres', label: 'Sinistres', icon: 'AlertTriangle' },
     { id: 'esg', label: 'ESG', icon: 'Leaf' },
     { id: 'energie', label: 'Énergie & Smart Building', icon: 'Gauge' },
+    { id: 'messagerie', label: 'Messagerie', icon: 'MessageCircle' },
   ],
 };

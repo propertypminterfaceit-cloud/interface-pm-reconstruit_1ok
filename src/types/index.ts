@@ -80,12 +80,13 @@ export interface Prestataire {
 export interface Document {
   id: string;
   name: string;
-  type: 'RMA' | 'RME' | 'Contrats' | 'Interventions' | 'Sinistres' | 'Conformité' | 'PPA' | 'Autres';
+  type: 'RMA' | 'RME' | 'Contrats' | 'Interventions' | 'Sinistres' | 'Conformité' | 'PPA' | 'ESG' | 'Autres';
   siteId?: string;
   uploadDate: string;
   status: 'Validé' | 'En attente' | 'Rejeté';
   size: string;
   url: string;
+  archivedYear?: number; // renseigné lors d'un archivage annuel (snapshot figé)
 }
 
 export interface BudgetPPA {
@@ -171,6 +172,8 @@ export interface Message {
   siteId: string;
   from: string;
   to: string;
+  fromId?: string;
+  toId?: string;
   message: string;
   date: string;
   read: boolean;

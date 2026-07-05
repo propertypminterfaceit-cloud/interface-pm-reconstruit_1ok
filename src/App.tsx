@@ -16,6 +16,7 @@ import Equipe from './components/Equipe';
 import Connexion from './components/Connexion';
 import Travaux from './components/Travaux';
 import DemandePrestation from './components/DemandePrestation';
+import Messagerie from './components/Messagerie';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Zustand + persist hydrate le store de façon synchrone au premier rendu
@@ -92,6 +93,8 @@ function App() {
         return <Travaux />;
       case 'demande-prestation':
         return <DemandePrestation />;
+      case 'messagerie':
+        return <Messagerie />;
       default:
         return <Dashboard />;
     }

@@ -614,6 +614,8 @@ export function generateMockData() {
       siteId: '1',
       from: 'Jean Dupont',
       to: 'Laurent Moreau',
+      fromId: '1',
+      toId: '5',
       message: 'Problème ascenseur résolu, merci pour le suivi',
       date: '2024-01-15 14:30:00',
       read: false
@@ -623,6 +625,8 @@ export function generateMockData() {
       siteId: '3',
       from: 'Marie Martin',
       to: 'Sophie Bernard',
+      fromId: '2',
+      toId: '4',
       message: 'Pouvez-vous valider le rapport de maintenance ?',
       date: '2024-01-15 11:15:00',
       read: true
