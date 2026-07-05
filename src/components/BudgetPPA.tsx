@@ -5,7 +5,7 @@ import { BudgetPPA as BudgetPPAType } from '../types';
 import { filterBySiteAccess, filterSitesByUser } from '../utils/permissions';
 
 export default function BudgetPPA() {
-  const { budgetPPA, sites, addBudgetPPA, updateBudgetPPA, currentRole, currentUser } = useStore();
+  const { budgetPPA, sites, addBudgetPPA, updateBudgetPPA, currentRole, currentUser, addAuditEntry } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showBudgetDetails, setShowBudgetDetails] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<BudgetPPAType | null>(null);
@@ -103,11 +103,23 @@ export default function BudgetPPA() {
 
   const confirmValidation = () => {
     if (!validationTarget) return;
+    const now = new Date().toLocaleString('fr-FR');
     updateBudgetPPA(validationTarget.budget.id, {
       validationStatus: validationTarget.action,
       validatedByName: currentUser?.name || currentRole,
-      validatedAt: new Date().toLocaleString('fr-FR'),
+      validatedAt: now,
       validationComment: validationComment.trim() || undefined
+    });
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'BudgetPPA',
+      entityId: validationTarget.budget.id,
+      entityLabel: `${validationTarget.budget.object} — ${validationTarget.budget.siteName}`,
+      action: validationTarget.action,
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: now,
+      comment: validationComment.trim() || undefined
     });
     setValidationTarget(null);
     setValidationComment('');

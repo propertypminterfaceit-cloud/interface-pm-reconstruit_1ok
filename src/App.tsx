@@ -18,6 +18,7 @@ import Travaux from './components/Travaux';
 import DemandePrestation from './components/DemandePrestation';
 import Messagerie from './components/Messagerie';
 import Honoraires from './components/Honoraires';
+import AuditLog from './components/AuditLog';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Zustand + persist hydrate le store de façon synchrone au premier rendu
@@ -103,6 +104,15 @@ function App() {
           );
         }
         return <Honoraires />;
+      case 'audit':
+        if (currentRole !== 'DT') {
+          return (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center max-w-md mx-auto mt-12">
+              <p className="text-gray-600">Le journal d'audit est réservé au Directeur Technique.</p>
+            </div>
+          );
+        }
+        return <AuditLog />;
       case 'travaux':
         return <Travaux />;
       case 'demande-prestation':

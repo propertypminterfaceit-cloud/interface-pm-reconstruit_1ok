@@ -88,6 +88,11 @@ export interface Document {
   size: string;
   url: string;
   archivedYear?: number; // renseigné lors d'un archivage annuel (snapshot figé)
+  createdByName?: string;
+  createdByRole?: string;
+  validatedByName?: string;
+  validatedAt?: string;
+  validationComment?: string;
 }
 
 export interface BudgetPPA {
@@ -125,6 +130,21 @@ export interface Sinistre {
   status: 'Déclaré' | 'Expertise' | 'Accepté' | 'Refusé' | 'Clôturé';
   photos: string[];
   interventionGenerated: boolean;
+  validatedByName?: string;
+  validatedAt?: string;
+  validationComment?: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  entityType: 'BudgetPPA' | 'Document' | 'Sinistre' | 'Connexion';
+  entityId: string;
+  entityLabel: string; // description lisible (ex: "Rénovation CTA - Tour Montparnasse")
+  action: string; // ex: "Validé", "Refusé", "Désactivé"
+  performedByName: string;
+  performedByRole: string;
+  timestamp: string;
+  comment?: string;
 }
 
 export interface ESGData {

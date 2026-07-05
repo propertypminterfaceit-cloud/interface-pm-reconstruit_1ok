@@ -6,7 +6,7 @@ import { Document } from '../types';
 import { getDataRoomCategory, DATA_ROOM_CATEGORIES, DataRoomCategory } from '../utils/documentCategories';
 
 export default function Documents() {
-  const { documents, sites, addDocument, currentRole, archiveDocumentsForYear } = useStore();
+  const { documents, sites, addDocument, updateDocument, currentRole, currentUser, archiveDocumentsForYear, addAuditEntry } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -16,6 +16,8 @@ export default function Documents() {
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [validationTarget, setValidationTarget] = useState<{ document: Document; action: 'Validé' | 'Rejeté' } | null>(null);
+  const [validationComment, setValidationComment] = useState('');
 
   const [newDocument, setNewDocument] = useState({
     name: '',
@@ -98,7 +100,9 @@ export default function Documents() {
       uploadDate: new Date().toISOString().split('T')[0],
       status: 'En attente' as const,
       size: newDocument.size,
-      url: `/documents/${newDocument.name.toLowerCase().replace(/\s+/g, '-')}.pdf`
+      url: `/documents/${newDocument.name.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+      createdByName: currentUser?.name || currentRole,
+      createdByRole: currentRole
     };
 
     addDocument(document);
@@ -109,6 +113,35 @@ export default function Documents() {
       siteId: '',
       size: '1.2 MB'
     });
+  };
+
+  const openDocValidationDialog = (document: Document, action: 'Validé' | 'Rejeté') => {
+    setValidationTarget({ document, action });
+    setValidationComment('');
+  };
+
+  const confirmDocValidation = () => {
+    if (!validationTarget) return;
+    const now = new Date().toLocaleString('fr-FR');
+    updateDocument(validationTarget.document.id, {
+      status: validationTarget.action,
+      validatedByName: currentUser?.name || currentRole,
+      validatedAt: now,
+      validationComment: validationComment.trim() || undefined
+    });
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Document',
+      entityId: validationTarget.document.id,
+      entityLabel: validationTarget.document.name,
+      action: validationTarget.action,
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: now,
+      comment: validationComment.trim() || undefined
+    });
+    setValidationTarget(null);
+    setValidationComment('');
   };
 
   const handleViewDocument = (document: Document) => {
@@ -365,6 +398,12 @@ export default function Documents() {
                         {document.type === 'RMA' || document.type === 'RME' ? 'Validé' : document.status}
                       </span>
                     </div>
+                    {document.validatedByName && (
+                      <div className="text-xs text-gray-400 mt-1">par {document.validatedByName} le {document.validatedAt}</div>
+                    )}
+                    {document.status === 'Rejeté' && document.validationComment && (
+                      <div className="text-xs text-gray-500 italic mt-0.5">"{document.validationComment}"</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{document.size}</div>
@@ -386,6 +425,22 @@ export default function Documents() {
                       <button className="p-1 text-gray-400 hover:text-green-600 transition-colors">
                         <Download className="w-4 h-4" />
                       </button>
+                      {(currentRole === 'PM' || currentRole === 'DT') && document.status === 'En attente' && (
+                        <>
+                          <button
+                            onClick={() => openDocValidationDialog(document, 'Validé')}
+                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            Valider
+                          </button>
+                          <button
+                            onClick={() => openDocValidationDialog(document, 'Rejeté')}
+                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Rejeter
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -482,6 +537,42 @@ export default function Documents() {
             setSelectedDocument(null);
           }}
         />
+      )}
+
+      {/* Modale de validation / rejet nominatif d'un document */}
+      {validationTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
+              {validationTarget.action === 'Validé' ? 'Valider' : 'Rejeter'} le document
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">{validationTarget.document.name}</p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Commentaire {validationTarget.action === 'Rejeté' ? '(recommandé)' : '(optionnel)'}
+            </label>
+            <textarea
+              value={validationComment}
+              onChange={(e) => setValidationComment(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-4"
+              placeholder="Ex: Document incomplet, à reprendre"
+            />
+            <p className="text-xs text-gray-400 mb-4">
+              Cette action sera horodatée et associée à votre nom ({currentUser?.name || currentRole}).
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button onClick={() => setValidationTarget(null)} className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                Annuler
+              </button>
+              <button
+                onClick={confirmDocValidation}
+                className={`px-4 py-2 text-white rounded-lg ${validationTarget.action === 'Validé' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+              >
+                Confirmer {validationTarget.action === 'Validé' ? 'la validation' : 'le rejet'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

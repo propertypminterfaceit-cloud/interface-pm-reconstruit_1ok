@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { 
   User, Site, Intervention, Conformity, Prestataire, Document, 
   BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
-  DemandePrestation, BPUItem, EnergyConnector, EnergyReading
+  DemandePrestation, BPUItem, EnergyConnector, EnergyReading, AuditEntry
 } from '../types';
 import { FeeSchedule, FeeTier } from '../utils/feeSchedule';
 import { generateMockData, generateEnergyReadingsForSite } from '../utils/mockData';
@@ -33,6 +33,7 @@ interface AppState {
   energyConnectors: EnergyConnector[];
   energyReadings: EnergyReading[];
   feeSchedules: FeeSchedule[];
+  auditLog: AuditEntry[];
   
   // Actions
   setCurrentRole: (role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => void;
@@ -75,6 +76,7 @@ interface AppState {
   // Réservé au DT côté UI : le barème d'honoraires est une décision de gouvernance,
   // pas une opération quotidienne du PM.
   upsertFeeSchedule: (mandat: string, tiers: FeeTier[]) => void;
+  addAuditEntry: (entry: AuditEntry) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -296,6 +298,10 @@ export const useStore = create<AppState>()(
             : [...(state.feeSchedules || []), { mandat, tiers }]
         };
       }),
+
+      addAuditEntry: (entry) => set((state) => ({
+        auditLog: [entry, ...(state.auditLog || [])]
+      })),
     }),
     {
       name: 'interface-pm-storage',
@@ -321,7 +327,8 @@ export const useStore = create<AppState>()(
         bpuItems: state.bpuItems,
         energyConnectors: state.energyConnectors,
         energyReadings: state.energyReadings,
-        feeSchedules: state.feeSchedules
+        feeSchedules: state.feeSchedules,
+        auditLog: state.auditLog
       }),
       migrate: (persistedState: any, version: number) => {
         const mockData = generateMockData();
@@ -345,7 +352,8 @@ export const useStore = create<AppState>()(
           bpuItems: Array.isArray(persistedState?.bpuItems) ? persistedState.bpuItems : mockData.bpuItems,
           energyConnectors: Array.isArray(persistedState?.energyConnectors) ? persistedState.energyConnectors : mockData.energyConnectors,
           energyReadings: Array.isArray(persistedState?.energyReadings) ? persistedState.energyReadings : mockData.energyReadings,
-          feeSchedules: Array.isArray(persistedState?.feeSchedules) ? persistedState.feeSchedules : mockData.feeSchedules
+          feeSchedules: Array.isArray(persistedState?.feeSchedules) ? persistedState.feeSchedules : mockData.feeSchedules,
+          auditLog: Array.isArray(persistedState?.auditLog) ? persistedState.auditLog : (mockData.auditLog || [])
         };
       },
       onRehydrateStorage: () => (state) => {

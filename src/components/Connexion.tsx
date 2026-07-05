@@ -4,7 +4,7 @@ import { Link, Plus, Filter, Search, CheckCircle, XCircle, Clock } from 'lucide-
 import { Connection } from '../types';
 
 export default function Connexion() {
-  const { connections, sites, addConnection, updateConnection, currentRole } = useStore();
+  const { connections, sites, addConnection, updateConnection, currentRole, currentUser, addAuditEntry } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -121,6 +121,17 @@ export default function Connexion() {
       status: newStatus,
       lastSync: lastSync,
       errors: newStatus === 'Actif' ? [] : connection.errors
+    });
+
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Connexion',
+      entityId: connectionId,
+      entityLabel: connection.name,
+      action: newStatus === 'Actif' ? 'Activée' : 'Désactivée',
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: new Date().toLocaleString('fr-FR')
     });
   };
 

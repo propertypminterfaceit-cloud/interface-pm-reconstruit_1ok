@@ -4,11 +4,42 @@ import { AlertTriangle, Plus, Filter, Search, Camera, FileText, Wrench } from 'l
 import { Sinistre } from '../types';
 
 export default function Sinistres() {
-  const { sinistres, sites, addSinistre, updateSinistre, addIntervention, currentRole } = useStore();
+  const { sinistres, sites, addSinistre, updateSinistre, addIntervention, currentRole, currentUser, addAuditEntry } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [validationTarget, setValidationTarget] = useState<{ sinistre: Sinistre; action: 'Accepté' | 'Refusé' } | null>(null);
+  const [validationComment, setValidationComment] = useState('');
+
+  const openSinistreValidationDialog = (sinistre: Sinistre, action: 'Accepté' | 'Refusé') => {
+    setValidationTarget({ sinistre, action });
+    setValidationComment('');
+  };
+
+  const confirmSinistreValidation = () => {
+    if (!validationTarget) return;
+    const now = new Date().toLocaleString('fr-FR');
+    updateSinistre(validationTarget.sinistre.id, {
+      status: validationTarget.action,
+      validatedByName: currentUser?.name || currentRole,
+      validatedAt: now,
+      validationComment: validationComment.trim() || undefined
+    });
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Sinistre',
+      entityId: validationTarget.sinistre.id,
+      entityLabel: `${validationTarget.sinistre.type} — ${validationTarget.sinistre.siteName}`,
+      action: validationTarget.action,
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: now,
+      comment: validationComment.trim() || undefined
+    });
+    setValidationTarget(null);
+    setValidationComment('');
+  };
 
   const [newSinistre, setNewSinistre] = useState({
     siteId: '',
@@ -294,6 +325,12 @@ export default function Sinistres() {
                     <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(sinistre.status)}`}>
                       {sinistre.status}
                     </span>
+                    {sinistre.validatedByName && (
+                      <div className="text-xs text-gray-400 mt-1">par {sinistre.validatedByName} le {sinistre.validatedAt}</div>
+                    )}
+                    {sinistre.status === 'Refusé' && sinistre.validationComment && (
+                      <div className="text-xs text-gray-500 italic mt-0.5">"{sinistre.validationComment}"</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -313,14 +350,32 @@ export default function Sinistres() {
                   </td>
                   {(currentRole === 'PM' || currentRole === 'DT') && (
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {!sinistre.interventionGenerated && (
-                        <button
-                          onClick={() => handleGenerateIntervention(sinistre.id)}
-                          className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors"
-                        >
-                          Générer intervention
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {!sinistre.interventionGenerated && (
+                          <button
+                            onClick={() => handleGenerateIntervention(sinistre.id)}
+                            className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors"
+                          >
+                            Générer intervention
+                          </button>
+                        )}
+                        {sinistre.status === 'Expertise' && (
+                          <>
+                            <button
+                              onClick={() => openSinistreValidationDialog(sinistre, 'Accepté')}
+                              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Accepter
+                            </button>
+                            <button
+                              onClick={() => openSinistreValidationDialog(sinistre, 'Refusé')}
+                              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              Refuser
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -452,6 +507,42 @@ export default function Sinistres() {
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Déclarer le sinistre
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale de validation / refus nominatif d'un sinistre */}
+      {validationTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
+              {validationTarget.action === 'Accepté' ? 'Accepter' : 'Refuser'} le sinistre
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">{validationTarget.sinistre.type} — {validationTarget.sinistre.siteName}</p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Commentaire {validationTarget.action === 'Refusé' ? '(recommandé)' : '(optionnel)'}
+            </label>
+            <textarea
+              value={validationComment}
+              onChange={(e) => setValidationComment(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-4"
+              placeholder="Ex: Sinistre hors garantie contractuelle"
+            />
+            <p className="text-xs text-gray-400 mb-4">
+              Cette action sera horodatée et associée à votre nom ({currentUser?.name || currentRole}).
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button onClick={() => setValidationTarget(null)} className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                Annuler
+              </button>
+              <button
+                onClick={confirmSinistreValidation}
+                className={`px-4 py-2 text-white rounded-lg ${validationTarget.action === 'Accepté' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+              >
+                Confirmer {validationTarget.action === 'Accepté' ? "l'acceptation" : 'le refus'}
               </button>
             </div>
           </div>

@@ -722,6 +722,7 @@ export function generateMockData() {
     bpuItems,
     energyConnectors,
     energyReadings,
-    feeSchedules: JSON.parse(JSON.stringify(FEE_SCHEDULES)) as FeeSchedule[]
+    feeSchedules: JSON.parse(JSON.stringify(FEE_SCHEDULES)) as FeeSchedule[],
+    auditLog: []
   };
 }

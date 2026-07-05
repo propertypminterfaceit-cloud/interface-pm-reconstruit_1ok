@@ -43,6 +43,7 @@ export const roleConfig = {
     // UNIVERS 5 — ADMINISTRATION (réservé DT : décisions structurantes, pas de la gestion quotidienne)
     { id: 'connexion', label: 'Connexion', icon: 'Link', group: 'ADMINISTRATION' },
     { id: 'honoraires', label: 'Honoraires (barèmes)', icon: 'Wallet', group: 'ADMINISTRATION' },
+    { id: 'audit', label: "Journal d'audit", icon: 'History', group: 'ADMINISTRATION' },
   ],
   Prestataire: [
     { id: 'dashboard', label: 'Dashboard', icon: 'Home' },
