@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { MapPin, Plus, Filter, Search, Building, Calendar, User, Star, Eye } from 'lucide-react';
 import { Site } from '../types';
+import { filterSitesByUser } from '../utils/permissions';
 
 export default function Sites() {
-  const { sites, users, prestataires, addSite, currentRole } = useStore();
+  const { sites, users, prestataires, addSite, currentRole, currentUser } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showSiteDetails, setShowSiteDetails] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
@@ -43,7 +44,11 @@ export default function Sites() {
 
   const typologies = ['IGH', 'ERP', 'TERTIAIRE', 'LOGISTIQUE', 'HOTEL'];
 
-  const filteredSites = sites.filter(site => {
+  // Ne partir que des sites réellement attribués à la personne connectée
+  // (DT = tout le patrimoine ; PM/Propriétaire = uniquement leurs actifs).
+  const visibleSites = filterSitesByUser(currentUser, currentRole, sites);
+
+  const filteredSites = visibleSites.filter(site => {
     const matchesSearch = site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          site.address.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTypologie = !filterTypologie || site.typologie.includes(filterTypologie as any);
@@ -181,7 +186,7 @@ export default function Sites() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="title-section">Sites</h1>
-            <p className="subtitle-section">{sites.length} sites dans votre portefeuille</p>
+            <p className="subtitle-section">{visibleSites.length} sites dans votre portefeuille</p>
           </div>
           
           {(currentRole === 'PM' || currentRole === 'DT') && (

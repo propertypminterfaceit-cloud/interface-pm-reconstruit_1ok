@@ -78,6 +78,11 @@ export function generateMockData() {
     { id: '3', name: 'Pierre Durand', email: 'p.durand@interface.pm', role: 'PM', sites: ['5'], averageRating: 3.8 },
     { id: '4', name: 'Sophie Bernard', email: 's.bernard@interface.pm', role: 'PM', sites: ['1', '3'], averageRating: 4.1 },
     { id: '5', name: 'Laurent Moreau', email: 'l.moreau@interface.pm', role: 'DT', sites: ['1', '2', '3', '4', '5'] },
+    // Asset Managers (Propriétaires) — chacun rattaché à un mandat et à un sous-ensemble d'actifs distinct,
+    // pour refléter un cas réel type PIMCO / Allianz gérant chacun une partie du patrimoine.
+    { id: '6', name: 'Amélie Rousseau', email: 'a.rousseau@pimco.com', role: 'Propriétaire', sites: ['1', '4'], mandat: 'PIMCO' },
+    { id: '7', name: 'Marc Lefèvre', email: 'm.lefevre@allianz.com', role: 'Propriétaire', sites: ['2', '3', '5'], mandat: 'Allianz' },
+    { id: '8', name: 'Karim Haddad', email: 'k.haddad@prestataire.fr', role: 'Prestataire', sites: ['1', '2', '3'] },
   ];
 
   const sites: Site[] = [
@@ -435,7 +440,11 @@ export function generateMockData() {
       amount: 150000,
       object: 'Rénovation système CTA',
       status: 'Non démarré',
-      pvSigned: false
+      pvSigned: false,
+      createdByName: 'Jean Dupont',
+      createdByRole: 'PM',
+      createdAt: '02/01/2024 09:15',
+      validationStatus: 'En attente'
     },
     {
       id: '2',
@@ -446,7 +455,14 @@ export function generateMockData() {
       amount: 85000,
       object: 'Mise aux normes éclairage LED',
       status: 'En cours',
-      pvSigned: false
+      pvSigned: false,
+      createdByName: 'Jean Dupont',
+      createdByRole: 'PM',
+      createdAt: '05/01/2024 11:30',
+      validationStatus: 'Validé',
+      validatedByName: 'Marc Lefèvre',
+      validatedAt: '06/01/2024 14:20',
+      validationComment: 'Budget conforme aux prévisions, à lancer'
     },
     {
       id: '3',
@@ -458,7 +474,13 @@ export function generateMockData() {
       object: 'Réfection façade et isolation',
       status: 'Terminé',
       pvSigned: true,
-      signatureDate: '2024-01-10'
+      signatureDate: '2024-01-10',
+      createdByName: 'Marie Martin',
+      createdByRole: 'PM',
+      createdAt: '08/01/2024 10:00',
+      validationStatus: 'Validé',
+      validatedByName: 'Marc Lefèvre',
+      validatedAt: '09/01/2024 16:45'
     }
   ];
 

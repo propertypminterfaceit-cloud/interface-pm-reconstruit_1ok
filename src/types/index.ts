@@ -6,6 +6,7 @@ export interface User {
   role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire' | 'Gestionnaire technique' | 'Gestionnaire locatif' | 'Assistant(e) administratif' | 'Responsable' | 'Directeur de site' | 'Building manager' | string;
   sites: string[];
   averageRating?: number;
+  mandat?: string; // ex: "PIMCO", "Allianz" — distingue plusieurs Asset Managers rattachés au même rôle
 }
 
 export interface Site {
@@ -99,6 +100,15 @@ export interface BudgetPPA {
   devis?: string;
   pvSigned: boolean;
   signatureDate?: string;
+  // Workflow de validation par le Propriétaire (Asset Manager) — distinct du
+  // statut d'avancement opérationnel ci-dessus.
+  createdByName?: string;
+  createdByRole?: string;
+  createdAt?: string;
+  validationStatus?: 'En attente' | 'Validé' | 'Refusé';
+  validatedByName?: string;
+  validatedAt?: string;
+  validationComment?: string;
 }
 
 export interface Sinistre {

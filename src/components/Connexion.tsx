@@ -103,6 +103,18 @@ export default function Connexion() {
     if (!connection) return;
 
     const newStatus = connection.status === 'Actif' ? 'Inactif' : 'Actif';
+
+    // Désactiver une connexion coupe la remontée de données pour tous les sites
+    // concernés : on exige une confirmation explicite pour éviter une coupure
+    // accidentelle en un clic.
+    if (newStatus === 'Inactif') {
+      const siteCount = connection.sites?.length || 0;
+      const confirmed = window.confirm(
+        `Désactiver "${connection.name}" interrompra la remontée de données pour ${siteCount} site${siteCount > 1 ? 's' : ''} (${connection.modules?.join(', ') || 'modules concernés'}). Confirmer la désactivation ?`
+      );
+      if (!confirmed) return;
+    }
+
     const lastSync = newStatus === 'Actif' ? new Date().toLocaleString('fr-FR') : connection.lastSync;
 
     updateConnection(connectionId, {

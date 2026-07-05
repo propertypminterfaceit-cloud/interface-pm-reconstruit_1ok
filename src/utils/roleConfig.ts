@@ -4,7 +4,6 @@ export const roleConfig = {
     // UNIVERS 1 — PATRIMOINE & STRUCTURE
     { id: 'sites', label: 'Sites', icon: 'Building', group: 'PATRIMOINE & STRUCTURE' },
     { id: 'equipe', label: 'Équipes', icon: 'UserCheck', group: 'PATRIMOINE & STRUCTURE' },
-    { id: 'connexion', label: 'Connexion', icon: 'Link', group: 'PATRIMOINE & STRUCTURE' },
     // UNIVERS 2 — CONFORMITÉ & ESG
     { id: 'conformite', label: 'Conformité réglementaire', icon: 'Shield', group: 'CONFORMITÉ & ESG' },
     { id: 'esg', label: 'ESG', icon: 'Leaf', group: 'CONFORMITÉ & ESG' },
@@ -25,7 +24,6 @@ export const roleConfig = {
     // UNIVERS 1 — PATRIMOINE & STRUCTURE
     { id: 'sites', label: 'Sites', icon: 'Building', group: 'PATRIMOINE & STRUCTURE' },
     { id: 'equipe', label: 'Équipes', icon: 'UserCheck', group: 'PATRIMOINE & STRUCTURE' },
-    { id: 'connexion', label: 'Connexion', icon: 'Link', group: 'PATRIMOINE & STRUCTURE' },
     // UNIVERS 2 — CONFORMITÉ & ESG
     { id: 'conformite', label: 'Conformité réglementaire', icon: 'Shield', group: 'CONFORMITÉ & ESG' },
     { id: 'esg', label: 'ESG', icon: 'Leaf', group: 'CONFORMITÉ & ESG' },
@@ -40,6 +38,8 @@ export const roleConfig = {
     { id: 'prestataires', label: 'Prestataires', icon: 'Package', group: 'FINANCES & PARTENAIRES' },
     { id: 'documents', label: 'Documents', icon: 'Folder', group: 'FINANCES & PARTENAIRES' },
     { id: 'budget-ppa', label: 'Budget PPA', icon: 'DollarSign', group: 'FINANCES & PARTENAIRES' },
+    // UNIVERS 5 — ADMINISTRATION (réservé DT : décisions structurantes, pas de la gestion quotidienne)
+    { id: 'connexion', label: 'Connexion', icon: 'Link', group: 'ADMINISTRATION' },
   ],
   Prestataire: [
     { id: 'dashboard', label: 'Dashboard', icon: 'Home' },

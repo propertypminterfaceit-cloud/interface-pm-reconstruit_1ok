@@ -9,8 +9,8 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { 
-    currentRole, activeTab, setActiveTab, setCurrentRole, isDemoMode,
-    interventions, budgetPPA, demandesPrestation, documents
+    currentRole, currentUser, activeTab, setActiveTab, switchDemoUser, isDemoMode,
+    interventions, budgetPPA, demandesPrestation, documents, users
   } = useStore();
   
   const tabs = roleConfig[currentRole];
@@ -60,8 +60,8 @@ export default function Layout({ children }: LayoutProps) {
     return count;
   };
 
-  const handleRoleChange = (newRole: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => {
-    setCurrentRole(newRole);
+  const handleUserChange = (userId: string) => {
+    switchDemoUser(userId);
   };
 
   // Composant pour la pastille de validation
@@ -224,6 +224,33 @@ export default function Layout({ children }: LayoutProps) {
                   );
                 })}
               </div>
+              {/* UNIVERS 5 — ADMINISTRATION (DT uniquement : décisions structurantes) */}
+              {currentRole === 'DT' && (
+                <div>
+                  <div className="px-3 py-1">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      🔒 ADMINISTRATION
+                    </h3>
+                  </div>
+                  {tabs.filter(tab => tab.group === 'ADMINISTRATION').map((tab) => {
+                    const IconComponent = Icons[tab.icon as keyof typeof Icons] as React.ComponentType<any>;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`w-full flex items-center px-3 py-2 text-left transition-all duration-200 rounded-lg relative ${
+                          activeTab === tab.id
+                            ? 'bg-gradient-to-r from-red-50 to-orange-50 text-red-700 border-l-3 border-red-500'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                      >
+                        <IconComponent className={`w-4 h-4 mr-2 ${activeTab === tab.id ? 'text-red-600' : 'text-gray-400'}`} />
+                        <span className="font-medium text-sm">{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -264,19 +291,37 @@ export default function Layout({ children }: LayoutProps) {
               </h2>
             </div>
             
-            {/* Sélecteur de rôle en mode démo */}
+            {/* Sélecteur de personne en mode démo — choisir une vraie personne active
+                le filtrage par actifs attribués (ex: plusieurs Asset Managers PIMCO/Allianz) */}
             {isDemoMode && (
               <div className="flex items-center space-x-2 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 rounded-lg border border-amber-200">
                 <span className="text-xs text-amber-700 font-semibold">Démo:</span>
                 <select
-                  value={currentRole}
-                  onChange={(e) => handleRoleChange(e.target.value as any)}
+                  value={currentUser?.id || ''}
+                  onChange={(e) => handleUserChange(e.target.value)}
                   className="px-2 py-1 border border-amber-300 rounded text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
                 >
-                  <option value="PM">Property Manager</option>
-                  <option value="DT">Directeur Technique</option>
-                  <option value="Prestataire">Prestataire</option>
-                  <option value="Propriétaire">Propriétaire</option>
+                  <option value="" disabled>Choisir une personne...</option>
+                  <optgroup label="Property Manager">
+                    {users.filter(u => u.role === 'PM').map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.sites?.length || 0} sites)</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Directeur Technique">
+                    {users.filter(u => u.role === 'DT').map(u => (
+                      <option key={u.id} value={u.id}>{u.name} (vue globale)</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Propriétaire / Asset Manager">
+                    {users.filter(u => u.role === 'Propriétaire').map(u => (
+                      <option key={u.id} value={u.id}>{u.name} — {u.mandat} ({u.sites?.length || 0} actifs)</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Prestataire">
+                    {users.filter(u => u.role === 'Prestataire').map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             )}

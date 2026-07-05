@@ -34,6 +34,7 @@ interface AppState {
   
   // Actions
   setCurrentRole: (role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => void;
+  switchDemoUser: (userId: string) => void;
   setActiveTab: (tab: string) => void;
   setDemoMode: (demo: boolean) => void;
   login: (user: User) => void;
@@ -83,6 +84,14 @@ export const useStore = create<AppState>()(
       
       // Actions
       setCurrentRole: (role) => set({ currentRole: role, activeTab: 'dashboard' }),
+      // Sélectionne un utilisateur démo précis (pas juste un rôle) : c'est ce qui
+      // permet de représenter plusieurs Asset Managers/PM distincts, chacun avec
+      // son propre périmètre de sites attribués, plutôt qu'une vue "tout ou rien".
+      switchDemoUser: (userId) => {
+        const user = (get().users || []).find(u => u.id === userId);
+        if (!user) return;
+        set({ currentUser: user, currentRole: user.role as AppState['currentRole'], activeTab: 'dashboard' });
+      },
       setActiveTab: (tab) => set({ activeTab: tab }),
       setDemoMode: (demo) => set({ isDemoMode: demo }),
       login: (user) => set({ currentUser: user, currentRole: user.role }),

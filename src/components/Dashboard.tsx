@@ -1,32 +1,44 @@
 import React from 'react';
 import { useStore } from '../store/useStore';
-import { BarChart3, AlertTriangle, CheckCircle, Clock, MapPin, FileText, Wrench, DollarSign } from 'lucide-react';
+import { BarChart3, AlertTriangle, CheckCircle, Clock, MapPin, FileText, Wrench, DollarSign, Users } from 'lucide-react';
+import { filterSitesByUser, filterBySiteAccess } from '../utils/permissions';
 
 export default function Dashboard() {
   const { 
-    sites, interventions, sinistres, documents, conformities, alerts, currentRole,
+    sites, interventions, sinistres, documents, conformities, alerts, currentRole, currentUser, users,
     budgetPPA, demandesPrestation, setActiveTab
   } = useStore();
 
+  // Périmètre réellement visible par la personne connectée (DT = tout, PM/Propriétaire = leurs actifs)
+  const visibleSites = filterSitesByUser(currentUser, currentRole, sites);
+  const visibleSiteIds = new Set(visibleSites.map(s => s.id));
+  const visibleInterventions = filterBySiteAccess(interventions, currentUser, currentRole, sites);
+  const visibleSinistres = filterBySiteAccess(sinistres, currentUser, currentRole, sites);
+  const visibleDocuments = filterBySiteAccess(documents, currentUser, currentRole, sites);
+  const visibleConformities = filterBySiteAccess(conformities, currentUser, currentRole, sites);
+  const visibleBudgetPPA = filterBySiteAccess(budgetPPA, currentUser, currentRole, sites);
+
   const stats = {
-    sites: sites.length,
-    interventions: interventions.filter(i => i.status === 'En attente').length,
-    sinistres: sinistres.filter(s => s.status === 'En cours' || s.status === 'Expertise').length,
-    documents: documents.filter(d => d.status === 'En attente').length,
-    conformityScore: Math.round(sites.reduce((acc, site) => acc + site.conformityScore, 0) / sites.length),
-    alertsCount: alerts.filter(a => !a.read).length
+    sites: visibleSites.length,
+    interventions: visibleInterventions.filter(i => i.status === 'En attente').length,
+    sinistres: visibleSinistres.filter(s => s.status === 'En cours' || s.status === 'Expertise').length,
+    documents: visibleDocuments.filter(d => d.status === 'En attente').length,
+    conformityScore: visibleSites.length
+      ? Math.round(visibleSites.reduce((acc, site) => acc + site.conformityScore, 0) / visibleSites.length)
+      : 0,
+    alertsCount: alerts.filter(a => !a.read && (!a.siteId || visibleSiteIds.has(a.siteId))).length
   };
 
   const alertsByType = {
-    high: alerts.filter(a => a.severity === 'high' && !a.read).length,
-    medium: alerts.filter(a => a.severity === 'medium' && !a.read).length,
-    low: alerts.filter(a => a.severity === 'low' && !a.read).length
+    high: alerts.filter(a => a.severity === 'high' && !a.read && (!a.siteId || visibleSiteIds.has(a.siteId))).length,
+    medium: alerts.filter(a => a.severity === 'medium' && !a.read && (!a.siteId || visibleSiteIds.has(a.siteId))).length,
+    low: alerts.filter(a => a.severity === 'low' && !a.read && (!a.siteId || visibleSiteIds.has(a.siteId))).length
   };
 
   const conformityByStatus = {
-    retard: conformities.filter(c => c.status === 'Retard').length,
-    echeance: conformities.filter(c => c.status === 'À échéance').length,
-    ok: conformities.filter(c => c.status === 'OK').length
+    retard: visibleConformities.filter(c => c.status === 'Retard').length,
+    echeance: visibleConformities.filter(c => c.status === 'À échéance').length,
+    ok: visibleConformities.filter(c => c.status === 'OK').length
   };
 
   // Calculer les validations en attente pour PM/DT
@@ -36,7 +48,7 @@ export default function Dashboard() {
     const alerts = [];
     
     // Interventions/Travaux en attente
-    const pendingInterventions = (interventions || []).filter(intervention => 
+    const pendingInterventions = (visibleInterventions || []).filter(intervention => 
       intervention.status === 'En attente' && 
       intervention.validationLevel < intervention.requiredValidators.length
     ).length;
@@ -51,7 +63,7 @@ export default function Dashboard() {
     }
     
     // Budget PPA en attente
-    const pendingBudgets = (budgetPPA || []).filter(budget => 
+    const pendingBudgets = (visibleBudgetPPA || []).filter(budget => 
       budget.status === 'Non démarré'
     ).length;
     
@@ -66,7 +78,8 @@ export default function Dashboard() {
     
     // Demandes de prestation en attente
     const pendingDemandes = (demandesPrestation || []).filter(demande => 
-      demande.status === 'Transmise' || demande.status === 'En attente de devis'
+      (demande.status === 'Transmise' || demande.status === 'En attente de devis') &&
+      (!demande.siteId || visibleSiteIds.has(demande.siteId))
     ).length;
     
     if (pendingDemandes > 0) {
@@ -80,7 +93,7 @@ export default function Dashboard() {
     
     // Documents en attente (PM uniquement)
     if (currentRole === 'PM') {
-    const pendingDocuments = (documents || []).filter(document => 
+    const pendingDocuments = (visibleDocuments || []).filter(document => 
       document.status === 'En attente'
     ).length;
     
@@ -114,6 +127,45 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Vue consolidée multi-PM / multi-Asset Manager — DT uniquement */}
+      {currentRole === 'DT' && (
+        <div className="card-unified p-4">
+          <div className="flex items-center mb-4">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-2 rounded-lg mr-3">
+              <Users className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="title-section">Répartition du patrimoine</h3>
+              <p className="text-xs text-gray-500">Vue consolidée par gestionnaire, tous périmètres confondus</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Property Managers</h4>
+              <div className="space-y-2">
+                {users.filter(u => u.role === 'PM').map(pm => (
+                  <div key={pm.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-800">{pm.name}</span>
+                    <span className="status-badge status-blue">{pm.sites?.length || 0} sites</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Asset Managers / Propriétaires</h4>
+              <div className="space-y-2">
+                {users.filter(u => u.role === 'Propriétaire').map(owner => (
+                  <div key={owner.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-800">{owner.name} <span className="text-xs text-gray-400">({owner.mandat})</span></span>
+                    <span className="status-badge status-green">{owner.sites?.length || 0} actifs</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alertes de validation pour PM/DT */}
       {validationAlerts.length > 0 && (

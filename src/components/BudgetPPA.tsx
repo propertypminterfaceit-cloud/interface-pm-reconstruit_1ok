@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { DollarSign, Plus, Filter, Search, Calendar, FileText, CheckCircle, Clock, Eye } from 'lucide-react';
+import { DollarSign, Plus, Filter, Search, Calendar, FileText, CheckCircle, Clock, Eye, XCircle, ShieldCheck } from 'lucide-react';
 import { BudgetPPA as BudgetPPAType } from '../types';
+import { filterBySiteAccess, filterSitesByUser } from '../utils/permissions';
 
 export default function BudgetPPA() {
-  const { budgetPPA, sites, addBudgetPPA, updateBudgetPPA, currentRole } = useStore();
+  const { budgetPPA, sites, addBudgetPPA, updateBudgetPPA, currentRole, currentUser } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showBudgetDetails, setShowBudgetDetails] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<BudgetPPAType | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSite, setFilterSite] = useState('');
+  const [validationTarget, setValidationTarget] = useState<{ budget: BudgetPPAType; action: 'Validé' | 'Refusé' } | null>(null);
+  const [validationComment, setValidationComment] = useState('');
 
   const [newBudget, setNewBudget] = useState({
     siteId: '',
@@ -20,7 +23,11 @@ export default function BudgetPPA() {
     object: ''
   });
 
-  const filteredBudgets = budgetPPA.filter(budget => {
+  // Périmètre réellement visible par la personne connectée (DT = tout, PM/Propriétaire = leurs actifs)
+  const visibleSites = filterSitesByUser(currentUser, currentRole, sites);
+  const visibleBudgetPPA = filterBySiteAccess(budgetPPA, currentUser, currentRole, sites);
+
+  const filteredBudgets = visibleBudgetPPA.filter(budget => {
     const matchesSearch = budget.object.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          budget.siteName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !filterStatus || budget.status === filterStatus;
@@ -55,6 +62,12 @@ export default function BudgetPPA() {
     const site = sites.find(s => s.id === newBudget.siteId);
     if (!site) return;
 
+    // Si c'est le Propriétaire qui ajoute lui-même la ligne, elle est considérée
+    // validée d'emblée (il n'a pas besoin de s'auto-approuver) ; si c'est le PM/DT,
+    // elle reste "En attente" jusqu'à validation par le Propriétaire du site concerné.
+    const isOwnerCreating = currentRole === 'Propriétaire';
+    const now = new Date().toLocaleString('fr-FR');
+
     const budget: BudgetPPAType = {
       id: Date.now().toString(),
       siteId: newBudget.siteId,
@@ -64,7 +77,12 @@ export default function BudgetPPA() {
       amount: newBudget.amount,
       object: newBudget.object,
       status: 'Non démarré',
-      pvSigned: false
+      pvSigned: false,
+      createdByName: currentUser?.name || currentRole,
+      createdByRole: currentRole,
+      createdAt: now,
+      validationStatus: isOwnerCreating ? 'Validé' : 'En attente',
+      ...(isOwnerCreating ? { validatedByName: currentUser?.name, validatedAt: now, validationComment: 'Ligne ajoutée directement par le Propriétaire' } : {})
     };
 
     addBudgetPPA(budget);
@@ -76,6 +94,23 @@ export default function BudgetPPA() {
       amount: 0,
       object: ''
     });
+  };
+
+  const openValidationDialog = (budget: BudgetPPAType, action: 'Validé' | 'Refusé') => {
+    setValidationTarget({ budget, action });
+    setValidationComment('');
+  };
+
+  const confirmValidation = () => {
+    if (!validationTarget) return;
+    updateBudgetPPA(validationTarget.budget.id, {
+      validationStatus: validationTarget.action,
+      validatedByName: currentUser?.name || currentRole,
+      validatedAt: new Date().toLocaleString('fr-FR'),
+      validationComment: validationComment.trim() || undefined
+    });
+    setValidationTarget(null);
+    setValidationComment('');
   };
 
   const handleSignPV = (budgetId: string) => {
@@ -98,12 +133,12 @@ export default function BudgetPPA() {
   };
 
   const budgetStats = {
-    total: budgetPPA.length,
-    totalAmount: budgetPPA.reduce((sum, budget) => sum + budget.amount, 0),
-    nonDemarre: budgetPPA.filter(b => b.status === 'Non démarré').length,
-    enCours: budgetPPA.filter(b => b.status === 'En cours').length,
-    termine: budgetPPA.filter(b => b.status === 'Terminé').length,
-    receptionne: budgetPPA.filter(b => b.status === 'Réceptionné').length
+    total: visibleBudgetPPA.length,
+    totalAmount: visibleBudgetPPA.reduce((sum, budget) => sum + budget.amount, 0),
+    nonDemarre: visibleBudgetPPA.filter(b => b.status === 'Non démarré').length,
+    enCours: visibleBudgetPPA.filter(b => b.status === 'En cours').length,
+    termine: visibleBudgetPPA.filter(b => b.status === 'Terminé').length,
+    receptionne: visibleBudgetPPA.filter(b => b.status === 'Réceptionné').length
   };
 
   return (
@@ -155,10 +190,10 @@ export default function BudgetPPA() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Budget PPA / CAPEX</h1>
-          <p className="text-gray-600">{budgetPPA.length} projets au total</p>
+          <p className="text-gray-600">{visibleBudgetPPA.length} projets au total</p>
         </div>
         
-        {(currentRole === 'PM' || currentRole === 'DT') && (
+        {(currentRole === 'PM' || currentRole === 'DT' || currentRole === 'Propriétaire') && (
           <button
             onClick={() => setShowCreateForm(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -202,7 +237,7 @@ export default function BudgetPPA() {
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Tous les sites</option>
-            {sites.map(site => (
+            {visibleSites.map(site => (
               <option key={site.id} value={site.id}>{site.name}</option>
             ))}
           </select>
@@ -226,6 +261,9 @@ export default function BudgetPPA() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Validation Propriétaire
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Site
@@ -265,6 +303,39 @@ export default function BudgetPPA() {
                         {budget.status}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {budget.validationStatus === 'Validé' && (
+                      <div>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">
+                          <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Validé
+                        </span>
+                        {budget.validatedByName && (
+                          <div className="text-xs text-gray-400 mt-1">par {budget.validatedByName}{budget.validatedAt ? ` le ${budget.validatedAt}` : ''}</div>
+                        )}
+                      </div>
+                    )}
+                    {budget.validationStatus === 'Refusé' && (
+                      <div>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">
+                          <XCircle className="w-3.5 h-3.5 mr-1" /> Refusé
+                        </span>
+                        {budget.validatedByName && (
+                          <div className="text-xs text-gray-400 mt-1">par {budget.validatedByName}{budget.validatedAt ? ` le ${budget.validatedAt}` : ''}</div>
+                        )}
+                        {budget.validationComment && (
+                          <div className="text-xs text-gray-500 mt-0.5 italic">"{budget.validationComment}"</div>
+                        )}
+                      </div>
+                    )}
+                    {(!budget.validationStatus || budget.validationStatus === 'En attente') && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-800">
+                        <Clock className="w-3.5 h-3.5 mr-1" /> En attente
+                      </span>
+                    )}
+                    {budget.createdByName && (
+                      <div className="text-xs text-gray-400 mt-1">Ajouté par {budget.createdByName}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{budget.siteName}</div>
@@ -325,6 +396,22 @@ export default function BudgetPPA() {
                             Ajouter devis
                           </button>
                         )}
+                        {currentRole === 'Propriétaire' && (!budget.validationStatus || budget.validationStatus === 'En attente') && (
+                          <>
+                            <button
+                              onClick={() => openValidationDialog(budget, 'Validé')}
+                              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            >
+                              Valider
+                            </button>
+                            <button
+                              onClick={() => openValidationDialog(budget, 'Refusé')}
+                              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                            >
+                              Refuser
+                            </button>
+                          </>
+                        )}
                         {budget.status === 'Terminé' && !budget.pvSigned && currentRole === 'Propriétaire' && (
                           <button
                             onClick={() => handleSignPV(budget.id)}
@@ -366,7 +453,7 @@ export default function BudgetPPA() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Sélectionner un site</option>
-                  {sites.map(site => (
+                  {visibleSites.map(site => (
                     <option key={site.id} value={site.id}>{site.name}</option>
                   ))}
                 </select>
@@ -506,6 +593,27 @@ export default function BudgetPPA() {
                       <span className="text-sm text-gray-500">Non signé</span>
                     )}
                   </div>
+
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">Validation Propriétaire:</p>
+                    {selectedBudget.createdByName && (
+                      <p className="text-xs text-gray-500">Ligne ajoutée par {selectedBudget.createdByName} ({selectedBudget.createdByRole}){selectedBudget.createdAt ? ` le ${selectedBudget.createdAt}` : ''}</p>
+                    )}
+                    {selectedBudget.validationStatus === 'Validé' && (
+                      <p className="text-sm text-green-700 mt-1">✓ Validée par {selectedBudget.validatedByName} le {selectedBudget.validatedAt}</p>
+                    )}
+                    {selectedBudget.validationStatus === 'Refusé' && (
+                      <div className="mt-1">
+                        <p className="text-sm text-red-700">✗ Refusée par {selectedBudget.validatedByName} le {selectedBudget.validatedAt}</p>
+                        {selectedBudget.validationComment && (
+                          <p className="text-xs text-gray-600 italic mt-1">"{selectedBudget.validationComment}"</p>
+                        )}
+                      </div>
+                    )}
+                    {(!selectedBudget.validationStatus || selectedBudget.validationStatus === 'En attente') && (
+                      <p className="text-sm text-amber-700 mt-1">En attente de validation par le Propriétaire</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -541,6 +649,46 @@ export default function BudgetPPA() {
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
               >
                 Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modale de validation / refus d'une ligne PPA par le Propriétaire */}
+      {validationTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
+              {validationTarget.action === 'Validé' ? 'Valider' : 'Refuser'} la ligne PPA
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {validationTarget.budget.object} — {validationTarget.budget.siteName} ({validationTarget.budget.amount.toLocaleString()}€)
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Commentaire {validationTarget.action === 'Refusé' ? '(recommandé pour expliquer le refus)' : '(optionnel)'}
+            </label>
+            <textarea
+              value={validationComment}
+              onChange={(e) => setValidationComment(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-4"
+              placeholder="Ex: Montant à revoir avant validation définitive"
+            />
+            <p className="text-xs text-gray-400 mb-4">
+              Cette action sera horodatée et associée à votre nom ({currentUser?.name || currentRole}).
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setValidationTarget(null)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmValidation}
+                className={`px-4 py-2 text-white rounded-lg ${validationTarget.action === 'Validé' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+              >
+                Confirmer {validationTarget.action === 'Validé' ? 'la validation' : 'le refus'}
               </button>
             </div>
           </div>

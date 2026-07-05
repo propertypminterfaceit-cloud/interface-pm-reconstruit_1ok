@@ -34,7 +34,7 @@ function ensureStoreIsPopulated() {
 }
 
 function App() {
-  const { activeTab } = useStore();
+  const { activeTab, currentRole } = useStore();
 
   const isReady = ensureStoreIsPopulated();
   if (!isReady) {
@@ -75,6 +75,18 @@ function App() {
       case 'equipe':
         return <Equipe />;
       case 'connexion':
+        // Garde-fou : Connexion est une action structurante (peut couper une remontée
+        // de données pour plusieurs sites), réservée au DT — même si l'onglet actif
+        // restait sélectionné après un changement de personne en mode démo.
+        if (currentRole !== 'DT') {
+          return (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center max-w-md mx-auto mt-12">
+              <p className="text-gray-600">
+                L'accès aux connexions API est réservé au Directeur Technique, en raison de son impact sur plusieurs sites à la fois.
+              </p>
+            </div>
+          );
+        }
         return <Connexion />;
       case 'travaux':
         return <Travaux />;
