@@ -183,7 +183,10 @@ function generateMandateAndSmartBuildingData() {
       createdByName: 'Laurent Moreau',
       createdAt: '10/01/2024 09:00',
       validatedByName: 'Laurent Moreau',
-      validatedAt: '10/01/2024 09:00'
+      validatedAt: '10/01/2024 09:00',
+      avancement: 'Fait',
+      avancementUpdatedByName: 'Jean Dupont',
+      avancementUpdatedAt: '15/01/2024 16:00'
     },
     {
       id: 'obl-6',
@@ -198,7 +201,24 @@ function generateMandateAndSmartBuildingData() {
       createdByName: 'Laurent Moreau',
       createdAt: '10/01/2024 09:05',
       validatedByName: 'Laurent Moreau',
-      validatedAt: '10/01/2024 09:05'
+      validatedAt: '10/01/2024 09:05',
+      avancement: 'En cours'
+    },
+    {
+      id: 'obl-7',
+      source: 'Certification',
+      sourceLabel: 'Certification BREEAM — Tour Montparnasse',
+      siteId: '1',
+      title: 'Préparer le dossier d\'audit de renouvellement',
+      targetModule: 'Documents',
+      ruleType: 'ObligationDocumentaire',
+      params: { documentType: 'Conformité' },
+      status: 'Active',
+      createdByName: 'Laurent Moreau',
+      createdAt: '10/01/2024 09:10',
+      validatedByName: 'Laurent Moreau',
+      validatedAt: '10/01/2024 09:10',
+      avancement: 'À faire'
     }
   ];
 

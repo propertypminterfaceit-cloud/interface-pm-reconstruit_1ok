@@ -6,7 +6,7 @@ import { getMandatForSite } from '../utils/permissions';
 import { computeChantierFee } from '../utils/feeSchedule';
 
 export default function Travaux() {
-  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention, users, feeSchedules, obligations } = useStore();
+  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention, users, feeSchedules, obligations, addAuditEntry } = useStore();
   
   // 🔒 VALIDATION DES DÉPENDANCES CRITIQUES
   if (!Array.isArray(interventions) || !Array.isArray(sites) || !currentRole) {
@@ -105,6 +105,35 @@ export default function Travaux() {
       case 'doe': return 'DOE';
       case 'pv': return 'PV de réception';
       default: return 'Document';
+    }
+  };
+
+  // Le validateur "dont c'est le tour" est déterminé par la position dans
+  // requiredValidators — ex: ['PM', 'DT', 'Propriétaire'] signifie que le PM
+  // valide en premier, puis le DT, puis le Propriétaire, dans cet ordre.
+  const getCurrentValidatorRole = (intervention: any): string | undefined => {
+    if (!Array.isArray(intervention.requiredValidators)) return undefined;
+    return intervention.requiredValidators[intervention.validationLevel || 0];
+  };
+
+  const handleValidateStep = (intervention: any) => {
+    const nextLevel = (intervention.validationLevel || 0) + 1;
+    const isFullyValidated = nextLevel >= intervention.requiredValidators.length;
+    updateIntervention(intervention.id, {
+      validationLevel: nextLevel,
+      status: isFullyValidated ? 'En cours' : intervention.status
+    });
+    if (addAuditEntry) {
+      addAuditEntry({
+        id: Date.now().toString(),
+        entityType: 'Intervention',
+        entityId: intervention.id,
+        entityLabel: `${intervention.description} — ${intervention.siteName}`,
+        action: isFullyValidated ? 'Toutes étapes validées' : `Étape validée (${nextLevel}/${intervention.requiredValidators.length})`,
+        performedByName: currentUser?.name || currentRole,
+        performedByRole: currentRole,
+        timestamp: new Date().toLocaleString('fr-FR')
+      });
     }
   };
 
@@ -592,6 +621,14 @@ export default function Travaux() {
                         {intervention && intervention.validationLevel ? intervention.validationLevel : 0}/
                         {intervention && Array.isArray(intervention.requiredValidators) ? intervention.requiredValidators.length : 0} validations
                       </div>
+                      {intervention && intervention.status === 'En attente' && getCurrentValidatorRole(intervention) === currentRole && (
+                        <button
+                          onClick={() => handleValidateStep(intervention)}
+                          className="mt-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          Valider cette étape
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

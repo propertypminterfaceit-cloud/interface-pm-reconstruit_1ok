@@ -8,7 +8,8 @@ const ENTITY_LABELS: Record<AuditEntry['entityType'], string> = {
   Document: 'Document',
   Sinistre: 'Sinistre',
   Connexion: 'Connexion',
-  Obligation: 'Spécificités du mandat'
+  Obligation: 'Spécificités du mandat',
+  Intervention: 'Travaux'
 };
 
 const ACTION_COLOR: Record<string, string> = {

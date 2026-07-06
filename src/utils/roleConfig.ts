@@ -19,6 +19,7 @@ export const roleConfig = {
     // UNIVERS 4 — FINANCES & PARTENAIRES
     { id: 'prestataires', label: 'Prestataires', icon: 'Package', group: 'FINANCES & PARTENAIRES' },
     { id: 'documents', label: 'Documents', icon: 'Folder', group: 'FINANCES & PARTENAIRES' },
+    { id: 'data-room', label: 'Data Room', icon: 'FolderArchive', group: 'FINANCES & PARTENAIRES' },
     { id: 'budget-ppa', label: 'Budget PPA', icon: 'DollarSign', group: 'FINANCES & PARTENAIRES' },
   ],
   DT: [
@@ -41,6 +42,7 @@ export const roleConfig = {
     // UNIVERS 4 — FINANCES & PARTENAIRES
     { id: 'prestataires', label: 'Prestataires', icon: 'Package', group: 'FINANCES & PARTENAIRES' },
     { id: 'documents', label: 'Documents', icon: 'Folder', group: 'FINANCES & PARTENAIRES' },
+    { id: 'data-room', label: 'Data Room', icon: 'FolderArchive', group: 'FINANCES & PARTENAIRES' },
     { id: 'budget-ppa', label: 'Budget PPA', icon: 'DollarSign', group: 'FINANCES & PARTENAIRES' },
     // UNIVERS 5 — ADMINISTRATION (réservé DT : décisions structurantes, pas de la gestion quotidienne)
     { id: 'connexion', label: 'Connexion', icon: 'Link', group: 'ADMINISTRATION' },

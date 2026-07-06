@@ -139,7 +139,7 @@ export interface Sinistre {
 
 export interface AuditEntry {
   id: string;
-  entityType: 'BudgetPPA' | 'Document' | 'Sinistre' | 'Connexion' | 'Obligation';
+  entityType: 'BudgetPPA' | 'Document' | 'Sinistre' | 'Connexion' | 'Obligation' | 'Intervention';
   entityId: string;
   entityLabel: string; // description lisible (ex: "Rénovation CTA - Tour Montparnasse")
   action: string; // ex: "Validé", "Refusé", "Désactivé"
@@ -180,6 +180,13 @@ export interface Obligation {
   validatedByName?: string;
   validatedAt?: string;
   validationComment?: string;
+  // Avancement opérationnel — distinct du statut de gouvernance ci-dessus :
+  // "Active" veut dire que la règle s'applique, "avancement" veut dire que le
+  // travail demandé pour l'occurrence en cours a été fait ou non.
+  avancement?: 'À faire' | 'En cours' | 'Fait';
+  avancementUpdatedByName?: string;
+  avancementUpdatedAt?: string;
+  documentIdPreuve?: string; // référence vers un Document existant, servant de preuve jointe
 }
 
 /** Niveau d'un bâtiment (RDC, R+1...) — nécessaire pour des données comme les

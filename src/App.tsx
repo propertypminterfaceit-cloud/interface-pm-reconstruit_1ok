@@ -21,6 +21,7 @@ import Honoraires from './components/Honoraires';
 import AuditLog from './components/AuditLog';
 import SpecificitesMandat from './components/SpecificitesMandat';
 import Certifications from './components/Certifications';
+import DataRoom from './components/DataRoom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Zustand + persist hydrate le store de façon synchrone au premier rendu
@@ -126,6 +127,8 @@ function App() {
         return <SpecificitesMandat />;
       case 'certifications':
         return <Certifications />;
+      case 'data-room':
+        return <DataRoom />;
       case 'travaux':
         return <Travaux />;
       case 'demande-prestation':

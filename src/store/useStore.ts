@@ -351,7 +351,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'interface-pm-storage',
-      version: 1,
+      version: 2, // incrémenté pour forcer la réparation des navigateurs dont le stockage local ne contient pas encore les champs obligations/certifications/niveaux
       partialize: (state) => ({
         currentRole: state.currentRole,
         activeTab: state.activeTab,

@@ -7,7 +7,7 @@ import RapportSynthese from './RapportSynthese';
 export default function Dashboard() {
   const { 
     sites, interventions, sinistres, documents, conformities, alerts, currentRole, currentUser, users,
-    budgetPPA, demandesPrestation, setActiveTab
+    budgetPPA, demandesPrestation, setActiveTab, certifications, obligations
   } = useStore();
   const [showRapport, setShowRapport] = useState(false);
 
@@ -29,6 +29,20 @@ export default function Dashboard() {
       ? Math.round(visibleSites.reduce((acc, site) => acc + site.conformityScore, 0) / visibleSites.length)
       : 0,
     alertsCount: alerts.filter(a => !a.read && (!a.siteId || visibleSiteIds.has(a.siteId))).length
+  };
+
+  // Avancement des certifications sur le périmètre visible (DT = tout, PM/Propriétaire = leurs sites)
+  const visibleCertifications = (certifications || []).filter(c => visibleSiteIds.has(c.siteId));
+  const certificationObligations = (obligations || []).filter(o =>
+    o.source === 'Certification' && o.siteId && visibleSiteIds.has(o.siteId)
+  );
+  const certificationStats = {
+    count: visibleCertifications.length,
+    avgProgress: certificationObligations.length
+      ? Math.round((certificationObligations.filter(o => o.avancement === 'Fait').length / certificationObligations.length) * 100)
+      : 0,
+    enCours: certificationObligations.filter(o => o.avancement === 'En cours').length,
+    aFaire: certificationObligations.filter(o => !o.avancement || o.avancement === 'À faire').length
   };
 
   const alertsByType = {
@@ -227,6 +241,24 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {certificationStats.count > 0 && (
+          <div
+            className="card-unified card-hover p-4 cursor-pointer"
+            onClick={() => setActiveTab('certifications')}
+          >
+            <div className="flex items-center">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-2 rounded-lg mr-3">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Certifications</p>
+                <p className="text-2xl font-bold text-gray-900">{certificationStats.avgProgress}%</p>
+                <p className="text-xs text-gray-400">{certificationStats.aFaire} action{certificationStats.aFaire > 1 ? 's' : ''} à faire</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="card-unified card-hover p-4">
           <div className="flex items-center">
