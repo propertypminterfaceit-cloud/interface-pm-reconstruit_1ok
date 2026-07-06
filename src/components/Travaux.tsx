@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { HardHat, Filter, Search, Upload, FileText, CheckCircle, Clock, Eye, Plus, Wallet } from 'lucide-react';
 import { ErrorBoundary } from './ErrorBoundary';
+import DocumentViewer from './DocumentViewer';
 import { getMandatForSite } from '../utils/permissions';
 import { computeChantierFee } from '../utils/feeSchedule';
 
@@ -33,6 +34,7 @@ export default function Travaux() {
     interventionId: '',
     amount: 0
   });
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
 
   const [newTravaux, setNewTravaux] = useState({
     siteId: '',
@@ -161,12 +163,20 @@ export default function Travaux() {
         {!doc ? (
           <span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-500">Non fourni</span>
         ) : doc.status === 'Validé' ? (
-          <span className="px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" title={`Signé par ${doc.validatedByName} le ${doc.validatedAt}`}>
-            ✓ Signé
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" title={`Signé par ${doc.validatedByName} le ${doc.validatedAt}`}>
+              ✓ Signé
+            </span>
+            <button onClick={() => setPreviewDoc(doc)} className="p-1 text-gray-400 hover:text-gray-600" title="Aperçu / télécharger">
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-1">
             <span className="px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-800">Reçu</span>
+            <button onClick={() => setPreviewDoc(doc)} className="p-1 text-gray-400 hover:text-gray-600" title="Aperçu / télécharger avant de signer">
+              <Eye className="w-3.5 h-3.5" />
+            </button>
             {canSign && (
               <button
                 onClick={() => handleValidateInterventionDocument(intervention, docType)}
@@ -722,16 +732,24 @@ export default function Travaux() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="space-y-1">
                       {/* Devis */}
-                      <div className="flex items-center text-xs">
+                      <div className="flex items-center text-xs gap-1">
                         <span className="w-12 text-gray-600">Devis:</span>
                         {(() => {
                           const count = getDevisCount(intervention);
                           const req = getValidationRequirements(intervention.amount || 0, intervention.siteId).devis;
                           const ok = count >= req;
+                          const lastDevis = getInterventionDocument(intervention.id, 'devis');
                           return (
-                            <span className={`px-1.5 py-0.5 rounded text-xs ${ok ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
-                              {count}/{req}
-                            </span>
+                            <>
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${ok ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                                {count}/{req}
+                              </span>
+                              {lastDevis && (
+                                <button onClick={() => setPreviewDoc(lastDevis)} className="p-1 text-gray-400 hover:text-gray-600" title="Aperçu / télécharger">
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
                           );
                         })()}
                       </div>
@@ -985,6 +1003,10 @@ export default function Travaux() {
             </div>
           </div>
         </div>
+      )}
+
+      {previewDoc && (
+        <DocumentViewer document={previewDoc} onClose={() => setPreviewDoc(null)} />
       )}
     </div>
     </div>

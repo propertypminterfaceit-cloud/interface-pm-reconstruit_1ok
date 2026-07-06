@@ -220,7 +220,7 @@ export default function Dashboard() {
       )}
       {/* Vue synthétique */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card-unified card-hover p-4">
+        <div className="card-unified card-hover p-4 cursor-pointer" onClick={() => setActiveTab('sites')}>
           <div className="flex items-center">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-2 rounded-lg mr-3">
               <MapPin className="w-5 h-5 text-blue-600" />
@@ -232,7 +232,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="card-unified card-hover p-4">
+        <div className="card-unified card-hover p-4 cursor-pointer" onClick={() => setActiveTab('conformite')}>
           <div className="flex items-center">
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-2 rounded-lg mr-3">
               <BarChart3 className="w-5 h-5 text-green-600" />
@@ -262,7 +262,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="card-unified card-hover p-4">
+        <div className="card-unified card-hover p-4 cursor-pointer" onClick={() => setActiveTab(currentRole === 'Prestataire' ? 'interventions' : 'travaux')}>
           <div className="flex items-center">
             <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-2 rounded-lg mr-3">
               <Wrench className="w-5 h-5 text-orange-600" />
@@ -275,7 +275,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="card-unified card-hover p-4">
+        <div className="card-unified card-hover p-4 cursor-pointer" onClick={() => setActiveTab('alertes')}>
           <div className="flex items-center">
             <div className="bg-gradient-to-br from-red-50 to-red-100 p-2 rounded-lg mr-3">
               <AlertTriangle className="w-5 h-5 text-red-600" />

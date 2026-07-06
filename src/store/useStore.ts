@@ -4,7 +4,8 @@ import {
   User, Site, Intervention, Conformity, Prestataire, Document, 
   BudgetPPA, Sinistre, ESGData, EsgObjective, Alert, Connection, Message,
   DemandePrestation, BPUItem, EnergyConnector, EnergyReading, AuditEntry,
-  Obligation, Niveau, ConsigneTemperature, Certification, MandateAmendment, KpiDefinition
+  Obligation, Niveau, ConsigneTemperature, Certification, MandateAmendment, KpiDefinition,
+  EsgSubject
 } from '../types';
 import { FeeSchedule, FeeTier } from '../utils/feeSchedule';
 import { generateMockData, generateEnergyReadingsForSite } from '../utils/mockData';
@@ -42,6 +43,7 @@ interface AppState {
   esgObjectives: EsgObjective[];
   mandateAmendments: MandateAmendment[];
   kpiDefinitions: KpiDefinition[];
+  esgSubjects: EsgSubject[];
   
   // Actions
   setCurrentRole: (role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => void;
@@ -94,6 +96,8 @@ interface AppState {
   addMandateAmendment: (amendment: MandateAmendment) => void;
   addKpiDefinition: (kpi: KpiDefinition) => void;
   updateKpiDefinition: (id: string, kpi: Partial<KpiDefinition>) => void;
+  addEsgSubject: (subject: EsgSubject) => void;
+  updateEsgSubject: (id: string, subject: Partial<EsgSubject>) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -380,10 +384,17 @@ export const useStore = create<AppState>()(
       updateKpiDefinition: (id, kpiUpdate) => set((state) => ({
         kpiDefinitions: (state.kpiDefinitions || []).map(k => k.id === id ? { ...k, ...kpiUpdate } : k)
       })),
+
+      addEsgSubject: (subject) => set((state) => ({
+        esgSubjects: [...(state.esgSubjects || []), subject]
+      })),
+      updateEsgSubject: (id, subjectUpdate) => set((state) => ({
+        esgSubjects: (state.esgSubjects || []).map(s => s.id === id ? { ...s, ...subjectUpdate } : s)
+      })),
     }),
     {
       name: 'interface-pm-storage',
-      version: 2, // incrémenté pour forcer la réparation des navigateurs dont le stockage local ne contient pas encore les champs obligations/certifications/niveaux
+      version: 3, // incrémenté à nouveau pour le catalogue ESG configurable (esgSubjects)
       partialize: (state) => ({
         currentRole: state.currentRole,
         activeTab: state.activeTab,
@@ -413,7 +424,8 @@ export const useStore = create<AppState>()(
         certifications: state.certifications,
         esgObjectives: state.esgObjectives,
         mandateAmendments: state.mandateAmendments,
-        kpiDefinitions: state.kpiDefinitions
+        kpiDefinitions: state.kpiDefinitions,
+        esgSubjects: state.esgSubjects
       }),
       migrate: (persistedState: any, version: number) => {
         const mockData = generateMockData();
@@ -445,7 +457,8 @@ export const useStore = create<AppState>()(
           certifications: Array.isArray(persistedState?.certifications) ? persistedState.certifications : (mockData.certifications || []),
           esgObjectives: Array.isArray(persistedState?.esgObjectives) ? persistedState.esgObjectives : (mockData.esgObjectives || []),
           mandateAmendments: Array.isArray(persistedState?.mandateAmendments) ? persistedState.mandateAmendments : (mockData.mandateAmendments || []),
-          kpiDefinitions: Array.isArray(persistedState?.kpiDefinitions) ? persistedState.kpiDefinitions : (mockData.kpiDefinitions || [])
+          kpiDefinitions: Array.isArray(persistedState?.kpiDefinitions) ? persistedState.kpiDefinitions : (mockData.kpiDefinitions || []),
+          esgSubjects: Array.isArray(persistedState?.esgSubjects) ? persistedState.esgSubjects : (mockData.esgSubjects || [])
         };
       },
       onRehydrateStorage: () => (state) => {

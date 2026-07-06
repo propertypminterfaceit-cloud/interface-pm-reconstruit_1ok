@@ -2,8 +2,43 @@ import {
   User, Site, Intervention, Conformity, Prestataire, Document, 
   BudgetPPA, Sinistre, ESGData, EsgObjective, Alert, Connection, Message,
   DemandePrestation, BPUItem, EnergyConnector, EnergyReading,
-  Obligation, Niveau, ConsigneTemperature, Certification, KpiDefinition
+  Obligation, Niveau, ConsigneTemperature, Certification, KpiDefinition, EsgSubject
 } from '../types';
+
+// Catalogue ESG par défaut — un point de départ raisonnable, pas une liste
+// figée : chaque sujet peut être désactivé ou complété librement par mandat.
+const DEFAULT_ESG_SUBJECTS: { pillar: EsgSubject['pillar']; label: string }[] = [
+  { pillar: 'Environnement', label: 'Décret Tertiaire — trajectoire de réduction' },
+  { pillar: 'Environnement', label: 'Décret BACS — GTB et automatisation' },
+  { pillar: 'Environnement', label: 'Gestion des déchets et valorisation' },
+  { pillar: 'Environnement', label: 'Consommation et gestion de l\'eau' },
+  { pillar: 'Environnement', label: 'Énergies renouvelables installées' },
+  { pillar: 'Environnement', label: 'Biodiversité et espaces verts' },
+  { pillar: 'Social', label: 'Qualité de l\'air intérieur' },
+  { pillar: 'Social', label: 'Accessibilité PMR des espaces communs' },
+  { pillar: 'Social', label: 'Satisfaction des occupants' },
+  { pillar: 'Social', label: 'Réclamations et litiges locataires' },
+  { pillar: 'Social', label: 'Sécurité des occupants' },
+  { pillar: 'Gouvernance', label: 'Reporting CSRD (double matérialité)' },
+  { pillar: 'Gouvernance', label: 'Clauses ESG dans les contrats prestataires' },
+  { pillar: 'Gouvernance', label: 'Transparence documentaire (data room ESG)' }
+];
+
+function generateEsgSubjects(mandats: string[]): EsgSubject[] {
+  const subjects: EsgSubject[] = [];
+  mandats.forEach(mandat => {
+    DEFAULT_ESG_SUBJECTS.forEach((subject, index) => {
+      subjects.push({
+        id: `esg-subj-${mandat}-${index}`,
+        pillar: subject.pillar,
+        label: subject.label,
+        mandat,
+        active: true
+      });
+    });
+  });
+  return subjects;
+}
 import { FEE_SCHEDULES, FeeSchedule } from './feeSchedule';
 
 // Génère 12 mois de données de consommation par site, à partir de la surface
@@ -908,6 +943,7 @@ export function generateMockData() {
     certifications,
     esgObjectives,
     mandateAmendments: [],
-    kpiDefinitions
+    kpiDefinitions,
+    esgSubjects: generateEsgSubjects(Array.from(new Set(sites.map(s => s.mandat).filter((m): m is string => !!m))))
   };
 }

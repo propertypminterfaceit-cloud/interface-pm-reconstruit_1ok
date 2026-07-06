@@ -192,6 +192,7 @@ export interface Obligation {
   avancementUpdatedByName?: string;
   avancementUpdatedAt?: string;
   documentIdPreuve?: string; // référence vers un Document existant, servant de preuve jointe
+  esgSubjectId?: string; // rattache l'obligation à un sujet précis du catalogue ESG
 }
 
 /** Niveau d'un bâtiment (RDC, R+1...) — nécessaire pour des données comme les
@@ -226,6 +227,19 @@ export interface Certification {
 
 /** Avenant/renouvellement d'un mandat — trace qu'un mandat a évolué à une
  * date donnée, sans reconstruire tout l'historique des obligations. */
+/** Sujet ESG configurable — remplace une liste figée par un vrai catalogue :
+ * chaque sujet appartient à un pilier (Environnement/Social/Gouvernance),
+ * peut être activé/désactivé par mandat, et de nouveaux sujets peuvent être
+ * ajoutés librement (ce ne sont pas que les décrets Tertiaire/BACS). */
+export interface EsgSubject {
+  id: string;
+  pillar: 'Environnement' | 'Social' | 'Gouvernance';
+  label: string;
+  mandat: string;
+  active: boolean;
+  isCustom?: boolean;
+}
+
 export interface MandateAmendment {
   id: string;
   mandat: string;
