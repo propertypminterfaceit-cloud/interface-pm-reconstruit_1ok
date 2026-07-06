@@ -50,6 +50,11 @@ export interface Intervention {
   documents: string[];
   photos: string[];
   comments?: string[];
+  // Statut de traitement donné par le prestataire lui-même — remonte
+  // directement sur le tableau du PM, distinct du workflow de validation.
+  prestataireStatus?: 'Non traité' | 'Vu / pris en compte' | 'Devis en cours' | 'En attente sous-traitant' | 'Planifié' | 'Traité';
+  prestataireStatusNote?: string;
+  prestataireStatusUpdatedAt?: string;
 }
 
 export interface Conformity {

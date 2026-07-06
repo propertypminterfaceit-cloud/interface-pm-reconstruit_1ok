@@ -344,6 +344,9 @@ export default function Interventions() {
                   Prestataire
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Suivi prestataire
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -390,6 +393,32 @@ export default function Interventions() {
                       <div className="text-sm text-gray-900">
                         {prestataires.find(p => p.id === intervention.prestataire)?.name || 'Non assigné'}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {currentRole === 'Prestataire' && intervention.prestataire === currentUser?.prestataireId ? (
+                        <select
+                          value={intervention.prestataireStatus || 'Non traité'}
+                          onChange={(e) => updateIntervention(intervention.id, {
+                            prestataireStatus: e.target.value as any,
+                            prestataireStatusUpdatedAt: new Date().toLocaleString('fr-FR')
+                          })}
+                          className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg"
+                        >
+                          <option value="Non traité">Non traité</option>
+                          <option value="Vu / pris en compte">Vu / pris en compte</option>
+                          <option value="Devis en cours">Devis en cours</option>
+                          <option value="En attente sous-traitant">En attente sous-traitant</option>
+                          <option value="Planifié">Planifié</option>
+                          <option value="Traité">Traité</option>
+                        </select>
+                      ) : (
+                        <div>
+                          <span className="status-badge status-blue">{intervention.prestataireStatus || 'Non traité'}</span>
+                          {intervention.prestataireStatusUpdatedAt && (
+                            <p className="text-xs text-gray-400 mt-1">{intervention.prestataireStatusUpdatedAt}</p>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
