@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { BarChart3, AlertTriangle, CheckCircle, Clock, MapPin, FileText, Wrench, DollarSign, Users } from 'lucide-react';
+import { BarChart3, AlertTriangle, CheckCircle, Clock, MapPin, FileText, Wrench, DollarSign, Users, FileBarChart } from 'lucide-react';
 import { filterSitesByUser, filterBySiteAccess } from '../utils/permissions';
+import RapportSynthese from './RapportSynthese';
 
 export default function Dashboard() {
   const { 
     sites, interventions, sinistres, documents, conformities, alerts, currentRole, currentUser, users,
     budgetPPA, demandesPrestation, setActiveTab
   } = useStore();
+  const [showRapport, setShowRapport] = useState(false);
 
   // Périmètre réellement visible par la personne connectée (DT = tout, PM/Propriétaire = leurs actifs)
   const visibleSites = filterSitesByUser(currentUser, currentRole, sites);
@@ -121,6 +123,13 @@ export default function Dashboard() {
             <p className="subtitle-section">Vue d'ensemble de votre portefeuille immobilier</p>
           </div>
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowRapport(true)}
+              className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50"
+            >
+              <FileBarChart className="w-4 h-4 mr-2" />
+              Générer le rapport
+            </button>
             <div className="bg-blue-100 p-2 rounded-lg">
               <BarChart3 className="w-5 h-5 text-blue-600" />
             </div>
@@ -355,6 +364,8 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {showRapport && <RapportSynthese onClose={() => setShowRapport(false)} />}
     </div>
   );
 }

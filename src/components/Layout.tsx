@@ -2,6 +2,7 @@ import React from 'react';
 import { useStore } from '../store/useStore';
 import { roleConfig } from '../utils/roleConfig';
 import * as Icons from 'lucide-react';
+import NotificationCenter from './NotificationCenter';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -87,7 +88,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar fixe - Design unifié */}
-      <div className="w-60 bg-white shadow-lg fixed left-0 top-0 h-full z-10 border-r border-gray-200">
+      <div className="w-60 bg-white shadow-lg fixed left-0 top-0 h-full z-10 border-r border-gray-200 print:hidden">
         {/* Logo */}
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700">
           <h1 className="text-lg font-bold text-white">Interface.pm</h1>
@@ -290,9 +291,9 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Contenu principal */}
-      <div className="flex-1 ml-60">
+      <div className="flex-1 ml-60 print:ml-0">
         {/* Header fixe */}
-        <header className="bg-white/95 shadow-sm border-b border-gray-200 fixed top-0 right-0 left-60 z-10 h-14 backdrop-blur-sm">
+        <header className="bg-white/95 shadow-sm border-b border-gray-200 fixed top-0 right-0 left-60 z-10 h-14 backdrop-blur-sm print:hidden">
           <div className="flex items-center justify-between h-full px-6">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
@@ -300,45 +301,49 @@ export default function Layout({ children }: LayoutProps) {
               </h2>
             </div>
             
-            {/* Sélecteur de personne en mode démo — choisir une vraie personne active
-                le filtrage par actifs attribués (ex: plusieurs Asset Managers PIMCO/Allianz) */}
-            {isDemoMode && (
-              <div className="flex items-center space-x-2 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 rounded-lg border border-amber-200">
-                <span className="text-xs text-amber-700 font-semibold">Démo:</span>
-                <select
-                  value={currentUser?.id || ''}
-                  onChange={(e) => handleUserChange(e.target.value)}
-                  className="px-2 py-1 border border-amber-300 rounded text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
-                >
-                  <option value="" disabled>Choisir une personne...</option>
-                  <optgroup label="Property Manager">
-                    {users.filter(u => u.role === 'PM').map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.sites?.length || 0} sites)</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Directeur Technique">
-                    {users.filter(u => u.role === 'DT').map(u => (
-                      <option key={u.id} value={u.id}>{u.name} (vue globale)</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Propriétaire / Asset Manager">
-                    {users.filter(u => u.role === 'Propriétaire').map(u => (
-                      <option key={u.id} value={u.id}>{u.name} — {u.mandat} ({u.sites?.length || 0} actifs)</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Prestataire">
-                    {users.filter(u => u.role === 'Prestataire').map(u => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
-            )}
+            <div className="flex items-center space-x-3">
+              <NotificationCenter onNavigate={setActiveTab} />
+
+              {/* Sélecteur de personne en mode démo — choisir une vraie personne active
+                  le filtrage par actifs attribués (ex: plusieurs Asset Managers PIMCO/Allianz) */}
+              {isDemoMode && (
+                <div className="flex items-center space-x-2 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                  <span className="text-xs text-amber-700 font-semibold">Démo:</span>
+                  <select
+                    value={currentUser?.id || ''}
+                    onChange={(e) => handleUserChange(e.target.value)}
+                    className="px-2 py-1 border border-amber-300 rounded text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white"
+                  >
+                    <option value="" disabled>Choisir une personne...</option>
+                    <optgroup label="Property Manager">
+                      {users.filter(u => u.role === 'PM').map(u => (
+                        <option key={u.id} value={u.id}>{u.name} ({u.sites?.length || 0} sites)</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Directeur Technique">
+                      {users.filter(u => u.role === 'DT').map(u => (
+                        <option key={u.id} value={u.id}>{u.name} (vue globale)</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Propriétaire / Asset Manager">
+                      {users.filter(u => u.role === 'Propriétaire').map(u => (
+                        <option key={u.id} value={u.id}>{u.name} — {u.mandat} ({u.sites?.length || 0} actifs)</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Prestataire">
+                      {users.filter(u => u.role === 'Prestataire').map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         {/* Zone de contenu scrollable */}
-        <main className="pt-14 p-6 min-h-screen bg-gray-50">
+        <main className="pt-14 p-6 min-h-screen bg-gray-50 print:p-0 print:pt-0 print:bg-white">
           {children}
         </main>
       </div>
