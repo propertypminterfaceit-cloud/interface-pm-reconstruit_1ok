@@ -1,8 +1,8 @@
 import { 
   User, Site, Intervention, Conformity, Prestataire, Document, 
-  BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
+  BudgetPPA, Sinistre, ESGData, EsgObjective, Alert, Connection, Message,
   DemandePrestation, BPUItem, EnergyConnector, EnergyReading,
-  Obligation, Niveau, ConsigneTemperature, Certification
+  Obligation, Niveau, ConsigneTemperature, Certification, KpiDefinition
 } from '../types';
 import { FEE_SCHEDULES, FeeSchedule } from './feeSchedule';
 
@@ -235,7 +235,22 @@ function generateMandateAndSmartBuildingData() {
     }
   ];
 
-  return { obligations, niveaux, consignesTemperature, certifications };
+  const kpiDefinitions: KpiDefinition[] = [
+    {
+      id: 'kpi-1',
+      label: 'Consommation électrique — Tour Montparnasse',
+      mandat: 'PIMCO',
+      siteId: '1',
+      source: 'Données Smart Building (Dnergy) — consommation électrique mensuelle',
+      frequencyDays: 30,
+      responsible: 'Jean Dupont',
+      objective: 40000,
+      threshold: 46000,
+      active: true
+    }
+  ];
+
+  return { obligations, niveaux, consignesTemperature, certifications, kpiDefinitions };
 }
 
 export function generateMockData() {
@@ -687,28 +702,19 @@ export function generateMockData() {
   ];
 
   const esgData: ESGData[] = [
-    {
-      id: '1',
-      siteId: '1',
-      siteName: 'Tour Montparnasse',
-      month: '2024-01',
-      energy: 45000,
-      water: 1200,
-      waste: 850,
-      co2: 12.5,
-      objectives: { energy: 42000, water: 1100, waste: 800, co2: 11.0 }
-    },
-    {
-      id: '2',
-      siteId: '2',
-      siteName: 'Entrepôt Logistique Roissy',
-      month: '2024-01',
-      energy: 28000,
-      water: 450,
-      waste: 320,
-      co2: 8.2,
-      objectives: { energy: 30000, water: 500, waste: 350, co2: 9.0 }
-    }
+    { id: '1', siteId: '1', siteName: 'Tour Montparnasse', month: '2024-01', energy: 45000, water: 1200, waste: 850, co2: 12.5 },
+    { id: '2', siteId: '1', siteName: 'Tour Montparnasse', month: '2024-02', energy: 43500, water: 1150, waste: 820, co2: 12.0 },
+    { id: '3', siteId: '1', siteName: 'Tour Montparnasse', month: '2024-03', energy: 41000, water: 1080, waste: 790, co2: 11.4 },
+    { id: '4', siteId: '2', siteName: 'Entrepôt Logistique Roissy', month: '2024-01', energy: 28000, water: 450, waste: 320, co2: 8.2 },
+    { id: '5', siteId: '2', siteName: 'Entrepôt Logistique Roissy', month: '2024-02', energy: 27200, water: 430, waste: 310, co2: 7.9 },
+    { id: '6', siteId: '2', siteName: 'Entrepôt Logistique Roissy', month: '2024-03', energy: 26500, water: 410, waste: 300, co2: 7.6 }
+  ];
+
+  // Objectifs ESG fixés une fois par an et par site (remplace l'ancien objectif
+  // répété à chaque mois, qui n'avait pas de sens à l'échelle annuelle).
+  const esgObjectives: EsgObjective[] = [
+    { id: 'esgobj-1-2024', siteId: '1', year: 2024, energy: 504000, water: 13200, waste: 9600, co2: 132 },
+    { id: 'esgobj-2-2024', siteId: '2', year: 2024, energy: 336000, water: 5400, waste: 3840, co2: 96 }
   ];
 
   const alerts: Alert[] = [
@@ -875,7 +881,7 @@ export function generateMockData() {
   ];
 
   const { energyConnectors, energyReadings } = generateEnergyData(sites);
-  const { obligations, niveaux, consignesTemperature, certifications } = generateMandateAndSmartBuildingData();
+  const { obligations, niveaux, consignesTemperature, certifications, kpiDefinitions } = generateMandateAndSmartBuildingData();
 
   return {
     users,
@@ -899,6 +905,9 @@ export function generateMockData() {
     obligations,
     niveaux,
     consignesTemperature,
-    certifications
+    certifications,
+    esgObjectives,
+    mandateAmendments: [],
+    kpiDefinitions
   };
 }

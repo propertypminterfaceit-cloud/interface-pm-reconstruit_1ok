@@ -14,10 +14,17 @@ export default function Messagerie() {
   // mise en place par ailleurs dans l'app.
   const contacts = useMemo(() => {
     if (!currentUser) return users;
+    // Le circuit d'échange passe toujours par le PM : un Propriétaire ne
+    // discute jamais directement avec un Prestataire, ni l'inverse.
+    const excludedRole = currentRole === 'Propriétaire' ? 'Prestataire'
+      : currentRole === 'Prestataire' ? 'Propriétaire'
+      : null;
     if (currentRole === 'DT') return users.filter(u => u.id !== currentUser.id);
     const mySites = new Set(currentUser.sites || []);
     return users.filter(u =>
-      u.id !== currentUser.id && (u.sites || []).some(s => mySites.has(s))
+      u.id !== currentUser.id &&
+      u.role !== excludedRole &&
+      (u.sites || []).some(s => mySites.has(s))
     );
   }, [users, currentUser, currentRole]);
 

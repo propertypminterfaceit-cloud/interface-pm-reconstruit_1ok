@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { BarChart3, AlertTriangle, CheckCircle, Clock, MapPin, FileText, Wrench, DollarSign, Users, FileBarChart } from 'lucide-react';
 import { filterSitesByUser, filterBySiteAccess } from '../utils/permissions';
+import { computeObligationAlerts } from '../utils/obligationAlerts';
 import RapportSynthese from './RapportSynthese';
 
 export default function Dashboard() {
@@ -29,6 +30,7 @@ export default function Dashboard() {
       ? Math.round(visibleSites.reduce((acc, site) => acc + site.conformityScore, 0) / visibleSites.length)
       : 0,
     alertsCount: alerts.filter(a => !a.read && (!a.siteId || visibleSiteIds.has(a.siteId))).length
+      + computeObligationAlerts(obligations || [], documents || []).filter(a => !a.siteId || visibleSiteIds.has(a.siteId)).length
   };
 
   // Avancement des certifications sur le périmètre visible (DT = tout, PM/Propriétaire = leurs sites)

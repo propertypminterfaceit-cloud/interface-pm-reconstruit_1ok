@@ -4,10 +4,12 @@ import { Leaf, Plus, Filter, Search, TrendingUp, TrendingDown, Target } from 'lu
 import { ESGData } from '../types';
 
 export default function ESG() {
-  const { esgData, sites, addESGData, currentRole } = useStore();
+  const { esgData, esgObjectives, sites, energyReadings, addESGData, upsertEsgObjective, currentRole } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [filterSite, setFilterSite] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
+  const currentYear = new Date().getFullYear();
+  const canManage = currentRole === 'PM' || currentRole === 'DT';
 
   const [newESGData, setNewESGData] = useState({
     siteId: '',
@@ -15,13 +17,7 @@ export default function ESG() {
     energy: 0,
     water: 0,
     waste: 0,
-    co2: 0,
-    objectives: {
-      energy: 0,
-      water: 0,
-      waste: 0,
-      co2: 0
-    }
+    co2: 0
   });
 
   const filteredESGData = esgData.filter(data => {
@@ -62,8 +58,7 @@ export default function ESG() {
       energy: newESGData.energy,
       water: newESGData.water,
       waste: newESGData.waste,
-      co2: newESGData.co2,
-      objectives: newESGData.objectives
+      co2: newESGData.co2
     };
 
     addESGData(esgEntry);
@@ -74,13 +69,38 @@ export default function ESG() {
       energy: 0,
       water: 0,
       waste: 0,
-      co2: 0,
-      objectives: {
-        energy: 0,
-        water: 0,
-        waste: 0,
-        co2: 0
-      }
+      co2: 0
+    });
+  };
+
+  // Cumul de l'année en cours par site, comparé à l'objectif annuel unique du
+  // site — remplace la comparaison mois par mois qui n'avait pas de sens.
+  const getAnnualPerformance = (siteId: string) => {
+    const entries = esgData.filter(d => d.siteId === siteId && d.month.startsWith(String(currentYear)));
+    const cumulative = entries.reduce((acc, e) => ({
+      energy: acc.energy + e.energy,
+      water: acc.water + e.water,
+      waste: acc.waste + e.waste,
+      co2: acc.co2 + e.co2
+    }), { energy: 0, water: 0, waste: 0, co2: 0 });
+    const objective = esgObjectives.find(o => o.siteId === siteId && o.year === currentYear);
+    // Si le site remonte de vraies données de consommation (Énergie & Smart
+    // Building), on les utilise pour l'énergie plutôt que la saisie manuelle —
+    // c'est la donnée la plus fiable disponible.
+    const realEnergyReadings = (energyReadings || []).filter(r => r.siteId === siteId && r.month.startsWith(String(currentYear)));
+    const realEnergyTotal = realEnergyReadings.length > 0
+      ? realEnergyReadings.reduce((sum, r) => sum + r.electricityKwh, 0)
+      : null;
+    return { cumulative, objective, realEnergyTotal, monthsRecorded: entries.length };
+  };
+
+  const handleSaveObjective = (siteId: string, field: 'energy' | 'water' | 'waste' | 'co2', value: number) => {
+    const existing = esgObjectives.find(o => o.siteId === siteId && o.year === currentYear);
+    upsertEsgObjective(siteId, currentYear, {
+      energy: field === 'energy' ? value : (existing?.energy || 0),
+      water: field === 'water' ? value : (existing?.water || 0),
+      waste: field === 'waste' ? value : (existing?.waste || 0),
+      co2: field === 'co2' ? value : (existing?.co2 || 0)
     });
   };
 
@@ -156,6 +176,59 @@ export default function ESG() {
         )}
       </div>
 
+      {/* Objectifs annuels & performance lissée par site */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-base font-bold text-gray-900">Objectifs annuels {currentYear} — performance lissée</h2>
+          <p className="text-xs text-gray-500">Un seul objectif par an et par site, comparé au cumul réel de l'année (données de consommation remontées quand le site est connecté).</p>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {sites.map(site => {
+            const { cumulative, objective, realEnergyTotal, monthsRecorded } = getAnnualPerformance(site.id);
+            if (monthsRecorded === 0 && !objective) return null;
+            const energyValue = realEnergyTotal ?? cumulative.energy;
+            const energyRatio = objective && objective.energy > 0 ? Math.round((energyValue / objective.energy) * 100) : null;
+            return (
+              <div key={site.id} className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-gray-900">{site.name}</p>
+                  {realEnergyTotal !== null && (
+                    <span className="text-xs text-green-600">Énergie basée sur les données Smart Building réelles</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  {(['energy', 'water', 'waste', 'co2'] as const).map(field => {
+                    const actual = field === 'energy' ? energyValue : cumulative[field];
+                    const objVal = objective?.[field];
+                    const ratio = objVal && objVal > 0 ? Math.round((actual / objVal) * 100) : null;
+                    const color = ratio === null ? 'text-gray-500' : ratio <= 100 ? 'text-green-600' : ratio <= 110 ? 'text-orange-600' : 'text-red-600';
+                    const fieldLabel = field === 'energy' ? 'Énergie' : field === 'water' ? 'Eau' : field === 'waste' ? 'Déchets' : 'CO₂';
+                    return (
+                      <div key={field} className="p-2 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-500">{fieldLabel}</p>
+                        <p className={`font-semibold ${color}`}>{Math.round(actual * 10) / 10}</p>
+                        {canManage ? (
+                          <input
+                            type="number"
+                            value={objVal ?? ''}
+                            onChange={(e) => handleSaveObjective(site.id, field, parseFloat(e.target.value) || 0)}
+                            placeholder="Objectif annuel"
+                            className="w-full mt-1 px-1.5 py-1 border border-gray-200 rounded text-xs"
+                          />
+                        ) : (
+                          <p className="text-xs text-gray-400 mt-1">Objectif : {objVal ?? '—'}</p>
+                        )}
+                        {ratio !== null && <p className={`text-xs ${color}`}>{ratio}% de l'objectif</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Filtres */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -223,9 +296,6 @@ export default function ESG() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   CO2 (tonnes)
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Performance
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -239,60 +309,10 @@ export default function ESG() {
                       {new Date(data.month + '-01').toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getPerformanceIcon(data.energy, data.objectives.energy)}
-                      <div className="ml-2">
-                        <div className="text-sm font-medium text-gray-900">{data.energy.toLocaleString()}</div>
-                        <div className={`text-xs ${getPerformanceColor(data.energy, data.objectives.energy)}`}>
-                          Obj: {data.objectives.energy.toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getPerformanceIcon(data.water, data.objectives.water)}
-                      <div className="ml-2">
-                        <div className="text-sm font-medium text-gray-900">{data.water.toLocaleString()}</div>
-                        <div className={`text-xs ${getPerformanceColor(data.water, data.objectives.water)}`}>
-                          Obj: {data.objectives.water.toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getPerformanceIcon(data.waste, data.objectives.waste)}
-                      <div className="ml-2">
-                        <div className="text-sm font-medium text-gray-900">{data.waste.toLocaleString()}</div>
-                        <div className={`text-xs ${getPerformanceColor(data.waste, data.objectives.waste)}`}>
-                          Obj: {data.objectives.waste.toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getPerformanceIcon(data.co2, data.objectives.co2)}
-                      <div className="ml-2">
-                        <div className="text-sm font-medium text-gray-900">{data.co2.toFixed(1)}</div>
-                        <div className={`text-xs ${getPerformanceColor(data.co2, data.objectives.co2)}`}>
-                          Obj: {data.objectives.co2.toFixed(1)}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      <div className={`text-xs font-medium ${getPerformanceColor(data.energy, data.objectives.energy)}`}>
-                        Énergie: {getPerformancePercentage(data.energy, data.objectives.energy) > 0 ? '+' : ''}{getPerformancePercentage(data.energy, data.objectives.energy)}%
-                      </div>
-                      <div className={`text-xs font-medium ${getPerformanceColor(data.co2, data.objectives.co2)}`}>
-                        CO2: {getPerformancePercentage(data.co2, data.objectives.co2) > 0 ? '+' : ''}{getPerformancePercentage(data.co2, data.objectives.co2)}%
-                      </div>
-                    </div>
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.energy.toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.water.toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.waste.toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{data.co2.toFixed(1)}</td>
                 </tr>
               ))}
             </tbody>
@@ -387,62 +407,8 @@ export default function ESG() {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Objectifs</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Objectif Énergie (kWh)</label>
-                    <input
-                      type="number"
-                      value={newESGData.objectives.energy}
-                      onChange={(e) => setNewESGData(prev => ({ 
-                        ...prev, 
-                        objectives: { ...prev.objectives, energy: parseInt(e.target.value) || 0 }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Objectif Eau (m³)</label>
-                    <input
-                      type="number"
-                      value={newESGData.objectives.water}
-                      onChange={(e) => setNewESGData(prev => ({ 
-                        ...prev, 
-                        objectives: { ...prev.objectives, water: parseInt(e.target.value) || 0 }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Objectif Déchets (kg)</label>
-                    <input
-                      type="number"
-                      value={newESGData.objectives.waste}
-                      onChange={(e) => setNewESGData(prev => ({ 
-                        ...prev, 
-                        objectives: { ...prev.objectives, waste: parseInt(e.target.value) || 0 }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Objectif CO2 (tonnes)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={newESGData.objectives.co2}
-                      onChange={(e) => setNewESGData(prev => ({ 
-                        ...prev, 
-                        objectives: { ...prev.objectives, co2: parseFloat(e.target.value) || 0 }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
+                Les objectifs se définissent une fois par an, dans la section "Objectifs annuels" en haut de la page — pas ici, à chaque saisie mensuelle.
               </div>
             </div>
 

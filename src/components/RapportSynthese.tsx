@@ -9,7 +9,7 @@ interface RapportSyntheseProps {
 
 export default function RapportSynthese({ onClose }: RapportSyntheseProps) {
   const {
-    sites, currentRole, currentUser, budgetPPA, esgData, energyReadings,
+    sites, currentRole, currentUser, budgetPPA, esgData, esgObjectives, energyReadings,
     sinistres, conformities
   } = useStore();
 
@@ -29,10 +29,19 @@ export default function RapportSynthese({ onClose }: RapportSyntheseProps) {
   const budgetValide = visibleBudget.filter(b => b.validationStatus === 'Validé').reduce((sum, b) => sum + b.amount, 0);
   const budgetEnAttente = visibleBudget.filter(b => !b.validationStatus || b.validationStatus === 'En attente').length;
 
+  const currentYear = new Date().getFullYear();
   const esgLatestBySite = visibleSites.map(site => {
-    const entries = visibleEsg.filter(e => e.siteId === site.id).sort((a, b) => b.month.localeCompare(a.month));
-    return { site, latest: entries[0] };
-  }).filter(e => e.latest);
+    const entries = visibleEsg.filter(e => e.siteId === site.id && e.month.startsWith(String(currentYear)));
+    if (entries.length === 0) return null;
+    const cumulative = entries.reduce((acc, e) => ({
+      energy: acc.energy + e.energy,
+      water: acc.water + e.water,
+      waste: acc.waste + e.waste,
+      co2: acc.co2 + e.co2
+    }), { energy: 0, water: 0, waste: 0, co2: 0 });
+    const objective = (esgObjectives || []).find(o => o.siteId === site.id && o.year === currentYear);
+    return { site, cumulative, objective };
+  }).filter((e): e is NonNullable<typeof e> => !!e);
 
   const energyLatestBySite = visibleSites.map(site => {
     const entries = visibleEnergy.filter(r => r.siteId === site.id).sort((a, b) => b.month.localeCompare(a.month));
@@ -136,7 +145,7 @@ export default function RapportSynthese({ onClose }: RapportSyntheseProps) {
 
           {/* ESG */}
           <section className="mb-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-100 pb-1">Suivi ESG (dernier relevé par site)</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-100 pb-1">Suivi ESG (cumul {currentYear} vs objectif annuel)</h2>
             {esgLatestBySite.length === 0 ? (
               <p className="text-sm text-gray-400">Aucune donnée ESG disponible pour ce périmètre.</p>
             ) : (
@@ -151,13 +160,13 @@ export default function RapportSynthese({ onClose }: RapportSyntheseProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {esgLatestBySite.map(({ site, latest }) => (
+                  {esgLatestBySite.map(({ site, cumulative, objective }) => (
                     <tr key={site.id} className="border-b border-gray-100">
                       <td className="py-1">{site.name}</td>
-                      <td className="py-1 text-right">{latest.energy} / obj. {latest.objectives.energy}</td>
-                      <td className="py-1 text-right">{latest.water} / obj. {latest.objectives.water}</td>
-                      <td className="py-1 text-right">{latest.waste} / obj. {latest.objectives.waste}</td>
-                      <td className="py-1 text-right">{latest.co2} / obj. {latest.objectives.co2}</td>
+                      <td className="py-1 text-right">{cumulative.energy}{objective ? ` / obj. ${objective.energy}` : ''}</td>
+                      <td className="py-1 text-right">{cumulative.water}{objective ? ` / obj. ${objective.water}` : ''}</td>
+                      <td className="py-1 text-right">{cumulative.waste}{objective ? ` / obj. ${objective.waste}` : ''}</td>
+                      <td className="py-1 text-right">{cumulative.co2.toFixed(1)}{objective ? ` / obj. ${objective.co2}` : ''}</td>
                     </tr>
                   ))}
                 </tbody>

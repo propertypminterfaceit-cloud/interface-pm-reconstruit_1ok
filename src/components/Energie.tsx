@@ -41,7 +41,7 @@ export default function Energie() {
   const {
     sites, energyConnectors, energyReadings,
     connectEnergyProvider, disconnectEnergyProvider,
-    niveaux, consignesTemperature, obligations
+    niveaux, consignesTemperature, obligations, currentRole
   } = useStore();
 
   const [selectedProviderBySite, setSelectedProviderBySite] = useState<Record<string, EnergyConnector['provider']>>({});
@@ -189,7 +189,7 @@ export default function Energie() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {!isConnected && !isConnecting && (
+                  {!isConnected && !isConnecting && (currentRole === 'PM' || currentRole === 'DT') && (
                     <>
                       <select
                         value={selectedProviderBySite[site.id] || connector?.provider || PROVIDERS[0].value}
@@ -219,6 +219,9 @@ export default function Energie() {
                       </button>
                     </>
                   )}
+                  {!isConnected && !isConnecting && currentRole !== 'PM' && currentRole !== 'DT' && (
+                    <span className="text-xs text-gray-400 italic">Connexion réservée au PM/DT</span>
+                  )}
 
                   {isConnecting && (
                     <span className="text-sm text-gray-500 flex items-center">
@@ -226,13 +229,16 @@ export default function Energie() {
                     </span>
                   )}
 
-                  {isConnected && (
+                  {isConnected && currentRole === 'DT' && (
                     <button
                       onClick={() => connector && disconnectEnergyProvider(connector.id)}
                       className="px-4 py-2 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50"
                     >
                       Déconnecter
                     </button>
+                  )}
+                  {isConnected && currentRole !== 'DT' && (
+                    <span className="text-xs text-gray-400 italic">Déconnexion réservée au DT</span>
                   )}
                 </div>
               </div>

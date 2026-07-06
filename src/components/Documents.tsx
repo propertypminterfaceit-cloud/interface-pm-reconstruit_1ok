@@ -6,7 +6,7 @@ import { Document } from '../types';
 import { getDataRoomCategory, DATA_ROOM_CATEGORIES, DataRoomCategory } from '../utils/documentCategories';
 
 export default function Documents() {
-  const { documents, sites, addDocument, updateDocument, currentRole, currentUser, archiveDocumentsForYear, addAuditEntry } = useStore();
+  const { documents, sites, addDocument, updateDocument, currentRole, currentUser, archiveDocumentsForYear, addAuditEntry, setActiveTab } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -253,9 +253,17 @@ export default function Documents() {
         )}
       </div>
 
-      {/* Résumé Data Room par catégorie (classement automatique) */}
+      {/* Classement par catégorie (propre au module Documents) */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Data room — classement par catégorie</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-700">Classement par catégorie</h3>
+          <button
+            onClick={() => setActiveTab && setActiveTab('data-room')}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            Voir la Data Room complète du site (tous modules + export ZIP) →
+          </button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {categoryCounts.map(({ category, count }) => (
             <button

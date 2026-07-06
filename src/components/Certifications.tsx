@@ -19,7 +19,7 @@ function getProgress(obligations: Obligation[]): number {
 export default function Certifications() {
   const {
     sites, certifications, obligations, documents, currentRole, currentUser,
-    addCertification, updateObligation, addObligation, addDocument
+    addCertification, updateObligation, addObligation, addDocument, addAuditEntry
   } = useStore();
 
   const [selectedCertId, setSelectedCertId] = useState<string | null>(null);
@@ -60,8 +60,9 @@ export default function Certifications() {
 
   const handleAddManualAction = () => {
     if (!selectedCert || !newActionTitle.trim()) return;
+    const newId = `obl-manual-${Date.now()}`;
     addObligation({
-      id: `obl-manual-${Date.now()}`,
+      id: newId,
       source: 'Certification',
       sourceLabel: `Certification ${selectedCert.type} — ${selectedCert.siteName}`,
       siteId: selectedCert.siteId,
@@ -74,15 +75,36 @@ export default function Certifications() {
       createdAt: new Date().toLocaleString('fr-FR'),
       avancement: 'À faire'
     });
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Obligation',
+      entityId: newId,
+      entityLabel: newActionTitle.trim(),
+      action: 'Action ajoutée',
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: new Date().toLocaleString('fr-FR')
+    });
     setNewActionTitle('');
     setShowAddAction(false);
   };
 
   const handleSetAvancement = (obligation: Obligation, avancement: Obligation['avancement']) => {
+    const now = new Date().toLocaleString('fr-FR');
     updateObligation(obligation.id, {
       avancement,
       avancementUpdatedByName: currentUser?.name || currentRole,
-      avancementUpdatedAt: new Date().toLocaleString('fr-FR')
+      avancementUpdatedAt: now
+    });
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Obligation',
+      entityId: obligation.id,
+      entityLabel: obligation.title,
+      action: `Avancement : ${avancement}`,
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: now
     });
   };
 
@@ -105,6 +127,17 @@ export default function Certifications() {
     };
     addDocument(doc);
     updateObligation(obligation.id, { documentIdPreuve: doc.id });
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Obligation',
+      entityId: obligation.id,
+      entityLabel: obligation.title,
+      action: 'Preuve jointe',
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: new Date().toLocaleString('fr-FR'),
+      comment: name
+    });
   };
 
   // ----- Vue détail d'une certification -----

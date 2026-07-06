@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Bell, AlertTriangle, CheckSquare, MessageCircle, X } from 'lucide-react';
 import { filterSitesByUser } from '../utils/permissions';
+import { computeObligationAlerts } from '../utils/obligationAlerts';
 
 interface NotificationItem {
   id: string;
@@ -20,7 +21,7 @@ export default function NotificationCenter({ onNavigate }: NotificationCenterPro
   const {
     alerts, sites, currentRole, currentUser, messages,
     interventions, budgetPPA, demandesPrestation, documents,
-    markAlertAsRead
+    markAlertAsRead, obligations
   } = useStore();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,18 @@ export default function NotificationCenter({ onNavigate }: NotificationCenterPro
       moduleId: 'alertes',
       severity: a.severity,
       onClick: () => { markAlertAsRead(a.id); onNavigate('alertes'); setOpen(false); }
+    }));
+
+  // 1bis. Alertes issues des obligations (échéances dépassées, preuves manquantes)
+  const obligationAlertItems: NotificationItem[] = computeObligationAlerts(obligations || [], documents || [])
+    .filter(a => !a.siteId || visibleSiteIds.has(a.siteId))
+    .map(a => ({
+      id: `obl-${a.id}`,
+      kind: 'alerte',
+      label: a.message,
+      moduleId: 'alertes',
+      severity: a.severity,
+      onClick: () => { onNavigate('alertes'); setOpen(false); }
     }));
 
   // 2. Validations en attente (PM/DT uniquement, cohérent avec le reste de l'app)
@@ -103,7 +116,7 @@ export default function NotificationCenter({ onNavigate }: NotificationCenterPro
     onClick: () => { onNavigate('messagerie'); setOpen(false); }
   }] : [];
 
-  const allItems = [...alertItems, ...validationItems, ...messageItems];
+  const allItems = [...alertItems, ...obligationAlertItems, ...validationItems, ...messageItems];
   const total = allItems.length;
 
   const iconFor = (kind: NotificationItem['kind']) => {

@@ -29,27 +29,30 @@ export default function DataRoom() {
 
   const site = visibleSites.find(s => s.id === selectedSiteId);
 
-  const getFolderContent = (folder: string) => {
+  const getFolderContent = (folder: string): { text: string; year: number | null }[] => {
     if (!site) return [];
     switch (folder) {
       case 'Réglementaire':
-        return [
-          ...documents.filter(d => d.siteId === site.id && (getDataRoomCategory(d.type) === 'Réglementaire')).map(d => `[Document] ${d.name} — ${d.status}`),
-        ];
+        return documents.filter(d => d.siteId === site.id && (getDataRoomCategory(d.type) === 'Réglementaire'))
+          .map(d => ({ text: `[Document] ${d.name} — ${d.status}`, year: new Date(d.uploadDate).getFullYear() }));
       case 'Contrôle':
-        return conformities.filter(c => c.siteId === site.id).map(c => `[Conformité] ${c.obligation} — ${c.status}`);
+        return conformities.filter(c => c.siteId === site.id)
+          .map(c => ({ text: `[Conformité] ${c.obligation} — ${c.status}`, year: new Date(c.dueDate).getFullYear() }));
       case 'PPA réalisé':
         return budgetPPA.filter(b => b.siteId === site.id && (b.status === 'Terminé' || b.status === 'Réceptionné'))
-          .map(b => `[PPA] ${b.object} — ${b.amount.toLocaleString()}€ — ${b.status}`);
+          .map(b => ({ text: `[PPA] ${b.object} — ${b.amount.toLocaleString()}€ — ${b.status}`, year: b.year }));
       case 'Interventions':
         return interventions.filter(i => i.siteId === site.id && (i.status === 'Clôturée' || i.status === 'Réalisée'))
-          .map(i => `[Travaux] ${i.description} — ${i.amount ? `${i.amount.toLocaleString()}€ — ` : ''}${i.status}`);
+          .map(i => ({ text: `[Travaux] ${i.description} — ${i.amount ? `${i.amount.toLocaleString()}€ — ` : ''}${i.status}`, year: new Date(i.dateRequested).getFullYear() }));
       case 'Contrats prestataires':
         return prestataires.filter(p => (p.sites || []).includes(site.id))
-          .map(p => `[Prestataire] ${p.name} (${p.metier})${p.contractEndDate ? ` — contrat jusqu'au ${new Date(p.contractEndDate).toLocaleDateString('fr-FR')}` : ''}`);
+          .map(p => ({
+            text: `[Prestataire] ${p.name} (${p.metier})${p.contractEndDate ? ` — contrat jusqu'au ${new Date(p.contractEndDate).toLocaleDateString('fr-FR')}` : ''}`,
+            year: p.contractEndDate ? new Date(p.contractEndDate).getFullYear() : null
+          }));
       case 'Suivi ESG':
         return esgData.filter(e => e.siteId === site.id)
-          .map(e => `[ESG ${e.month}] Énergie ${e.energy} / Eau ${e.water} / Déchets ${e.waste} / CO2 ${e.co2}`);
+          .map(e => ({ text: `[ESG ${e.month}] Énergie ${e.energy} / Eau ${e.water} / Déchets ${e.waste} / CO2 ${e.co2}`, year: parseInt(e.month.slice(0, 4)) }));
       default:
         return [];
     }
@@ -63,19 +66,32 @@ export default function DataRoom() {
       const zip = new JSZip();
       const root = zip.folder(site.name.replace(/[^a-zA-Z0-9 ]/g, '')) || zip;
 
+      // Classement par année en premier niveau (ex: 2026/, 2025/...), puis par
+      // catégorie à l'intérieur — permet de voir les actions réalisées année
+      // par année, comme demandé, plutôt qu'un classement uniquement par sujet.
+      const byYear: Record<string, Record<string, string[]>> = {};
       FOLDERS.forEach(folder => {
         const items = getFolderContent(folder.label);
-        const folderZip = root.folder(folder.label);
-        if (folderZip) {
-          const content = items.length > 0
-            ? items.join('\n\n')
-            : 'Aucun élément dans cette catégorie pour ce site.';
-          folderZip.file(`${folder.label}.txt`, content);
-        }
+        items.forEach(item => {
+          const yearKey = item.year ? String(item.year) : 'Non daté';
+          if (!byYear[yearKey]) byYear[yearKey] = {};
+          if (!byYear[yearKey][folder.label]) byYear[yearKey][folder.label] = [];
+          byYear[yearKey][folder.label].push(item.text);
+        });
+      });
+
+      const years = Object.keys(byYear).sort((a, b) => b.localeCompare(a)); // années récentes en premier
+      years.forEach(year => {
+        const yearFolder = root.folder(year);
+        if (!yearFolder) return;
+        Object.entries(byYear[year]).forEach(([folderLabel, items]) => {
+          yearFolder.file(`${folderLabel}.txt`, items.join('\n\n'));
+        });
       });
 
       root.file('README.txt',
         `Data room — ${site.name}\nGénéré le ${new Date().toLocaleString('fr-FR')}\n\n` +
+        `Classement par année (${years.join(', ') || 'aucune donnée'}), puis par catégorie à l'intérieur de chaque année.\n` +
         `Cette version démo contient des fiches récapitulatives par catégorie, pas les fichiers binaires originaux (non stockés dans cette démo).`
       );
 
@@ -145,7 +161,7 @@ export default function DataRoom() {
                     {items.slice(0, 6).map((item, idx) => (
                       <li key={idx} className="text-sm text-gray-700 flex items-start">
                         <FileText className="w-3.5 h-3.5 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
-                        {item}
+                        <span>{item.text} <span className="text-xs text-gray-400">({item.year || 'non daté'})</span></span>
                       </li>
                     ))}
                     {items.length > 6 && <li className="text-xs text-gray-400">+ {items.length - 6} autre(s)</li>}

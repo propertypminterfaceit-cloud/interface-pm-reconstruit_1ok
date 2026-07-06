@@ -219,6 +219,31 @@ export interface Certification {
   status: 'Active' | 'En renouvellement' | 'Expirée';
 }
 
+/** Avenant/renouvellement d'un mandat — trace qu'un mandat a évolué à une
+ * date donnée, sans reconstruire tout l'historique des obligations. */
+export interface MandateAmendment {
+  id: string;
+  mandat: string;
+  description: string;
+  date: string;
+  createdByName: string;
+}
+
+/** KPI configurable, rattaché à un mandat/site, plutôt que codé en dur par
+ * module — répond au besoin de KPI variables selon le mandat/portefeuille. */
+export interface KpiDefinition {
+  id: string;
+  label: string;
+  mandat?: string;
+  siteId?: string;
+  source: string; // description de la source de donnée (ex: "Consommation électrique Smart Building")
+  frequencyDays: number;
+  responsible: string;
+  objective: number;
+  threshold: number; // seuil d'alerte
+  active: boolean;
+}
+
 export interface ESGData {
   id: string;
   siteId: string;
@@ -228,12 +253,19 @@ export interface ESGData {
   water: number;
   waste: number;
   co2: number;
-  objectives: {
-    energy: number;
-    water: number;
-    waste: number;
-    co2: number;
-  };
+}
+
+/** Objectif ESG fixé une fois par an et par site — remplace l'ancien objectif
+ * répété (et donc incohérent) à chaque entrée mensuelle. La performance se
+ * lisse ensuite sur l'année complète, comparée à ce seul objectif annuel. */
+export interface EsgObjective {
+  id: string;
+  siteId: string;
+  year: number;
+  energy: number;
+  water: number;
+  waste: number;
+  co2: number;
 }
 
 export interface Alert {

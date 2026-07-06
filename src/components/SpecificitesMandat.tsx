@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { FileSignature, CheckCircle2, XCircle, Clock, Sparkles, Info } from 'lucide-react';
+import { FileSignature, CheckCircle2, XCircle, Clock, Sparkles, Info, History, Gauge, Plus } from 'lucide-react';
 import { Obligation } from '../types';
 
 const SOURCE_COLOR: Record<Obligation['source'], string> = {
@@ -29,12 +29,56 @@ const SIMULATED_EXTRACTIONS: Omit<Obligation, 'id' | 'status' | 'createdAt'>[] =
 ];
 
 export default function SpecificitesMandat() {
-  const { obligations, currentRole, currentUser, addObligation, updateObligation, addAuditEntry } = useStore();
+  const {
+    obligations, currentRole, currentUser, addObligation, updateObligation, addAuditEntry,
+    mandateAmendments, addMandateAmendment, kpiDefinitions, addKpiDefinition, updateKpiDefinition,
+    sites
+  } = useStore();
   const [validationTarget, setValidationTarget] = useState<{ obligation: Obligation; action: 'Active' | 'Rejetée' } | null>(null);
   const [comment, setComment] = useState('');
   const [isSimulating, setIsSimulating] = useState(false);
+  const [showAmendmentForm, setShowAmendmentForm] = useState(false);
+  const [newAmendment, setNewAmendment] = useState({ mandat: 'PIMCO', description: '' });
+  const [showKpiForm, setShowKpiForm] = useState(false);
+  const [newKpi, setNewKpi] = useState({
+    label: '', mandat: 'PIMCO', siteId: '', source: '', frequencyDays: 30,
+    responsible: '', objective: 0, threshold: 0
+  });
 
   const sorted = [...(obligations || [])].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  const handleAddAmendment = () => {
+    if (!newAmendment.description.trim()) return;
+    addMandateAmendment({
+      id: Date.now().toString(),
+      mandat: newAmendment.mandat,
+      description: newAmendment.description.trim(),
+      date: new Date().toLocaleString('fr-FR'),
+      createdByName: currentUser?.name || currentRole
+    });
+    setNewAmendment({ mandat: 'PIMCO', description: '' });
+    setShowAmendmentForm(false);
+  };
+
+  const handleAddKpi = () => {
+    if (!newKpi.label.trim()) return;
+    addKpiDefinition({
+      id: Date.now().toString(),
+      label: newKpi.label.trim(),
+      mandat: newKpi.mandat || undefined,
+      siteId: newKpi.siteId || undefined,
+      source: newKpi.source.trim() || 'Saisie manuelle',
+      frequencyDays: newKpi.frequencyDays,
+      responsible: newKpi.responsible.trim(),
+      objective: newKpi.objective,
+      threshold: newKpi.threshold,
+      active: true
+    });
+    setNewKpi({ label: '', mandat: 'PIMCO', siteId: '', source: '', frequencyDays: 30, responsible: '', objective: 0, threshold: 0 });
+    setShowKpiForm(false);
+  };
+
+  const mandats = Array.from(new Set(sites.map(s => s.mandat).filter((m): m is string => !!m)));
 
   const handleSimulateImport = () => {
     setIsSimulating(true);
@@ -127,6 +171,78 @@ export default function SpecificitesMandat() {
         </p>
       </div>
 
+      {/* KPI dynamiques */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center">
+            <Gauge className="w-5 h-5 text-blue-600 mr-2" />
+            <h2 className="text-base font-bold text-gray-900">KPI dynamiques</h2>
+          </div>
+          {currentRole === 'DT' && (
+            <button
+              onClick={() => setShowKpiForm(true)}
+              className="flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-1.5" /> Ajouter un KPI
+            </button>
+          )}
+        </div>
+        {(kpiDefinitions || []).length === 0 ? (
+          <p className="text-sm text-gray-400 p-6 text-center">Aucun KPI configuré pour le moment.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {kpiDefinitions.map(kpi => (
+              <div key={kpi.id} className="p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{kpi.label}</p>
+                  <p className="text-xs text-gray-500">{kpi.source} — fréquence {kpi.frequencyDays} j — responsable {kpi.responsible || '—'}</p>
+                  <p className="text-xs text-gray-400">Objectif : {kpi.objective} — Seuil d'alerte : {kpi.threshold}{kpi.mandat ? ` — Mandat ${kpi.mandat}` : ''}</p>
+                </div>
+                {currentRole === 'DT' && (
+                  <button
+                    onClick={() => updateKpiDefinition(kpi.id, { active: !kpi.active })}
+                    className={`text-xs px-2 py-1 rounded font-medium flex-shrink-0 ${kpi.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}
+                  >
+                    {kpi.active ? 'Actif' : 'Désactivé'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Avenants et renouvellements de mandat */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center">
+            <History className="w-5 h-5 text-gray-600 mr-2" />
+            <h2 className="text-base font-bold text-gray-900">Avenants et renouvellements</h2>
+          </div>
+          {currentRole === 'DT' && (
+            <button
+              onClick={() => setShowAmendmentForm(true)}
+              className="flex items-center px-3 py-1.5 text-sm bg-gray-700 text-white rounded-lg hover:bg-gray-800"
+            >
+              <Plus className="w-4 h-4 mr-1.5" /> Enregistrer un avenant
+            </button>
+          )}
+        </div>
+        {(mandateAmendments || []).length === 0 ? (
+          <p className="text-sm text-gray-400 p-6 text-center">Aucun avenant enregistré.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {mandateAmendments.map(a => (
+              <div key={a.id} className="p-4">
+                <p className="text-sm font-medium text-gray-900">{a.mandat}</p>
+                <p className="text-sm text-gray-600">{a.description}</p>
+                <p className="text-xs text-gray-400 mt-1">Par {a.createdByName} le {a.date}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-200">
         {sorted.length === 0 && (
           <p className="text-sm text-gray-400 p-8 text-center">Aucune obligation enregistrée pour le moment.</p>
@@ -216,6 +332,72 @@ export default function SpecificitesMandat() {
               >
                 Confirmer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAmendmentForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Enregistrer un avenant / renouvellement</h3>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mandat</label>
+            <select
+              value={newAmendment.mandat}
+              onChange={(e) => setNewAmendment(prev => ({ ...prev, mandat: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+            >
+              {mandats.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description du changement</label>
+            <textarea
+              value={newAmendment.description}
+              onChange={(e) => setNewAmendment(prev => ({ ...prev, description: e.target.value }))}
+              rows={3}
+              placeholder="Ex: Renouvellement pour 3 ans, seuil de validation travaux relevé à 15 000€"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+            />
+            <div className="flex justify-end space-x-3">
+              <button onClick={() => setShowAmendmentForm(false)} className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
+              <button onClick={handleAddAmendment} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKpiForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Ajouter un KPI dynamique</h3>
+            <div className="space-y-3">
+              <input type="text" value={newKpi.label} onChange={(e) => setNewKpi(prev => ({ ...prev, label: e.target.value }))} placeholder="Nom du KPI" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              <select value={newKpi.mandat} onChange={(e) => setNewKpi(prev => ({ ...prev, mandat: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                {mandats.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <select value={newKpi.siteId} onChange={(e) => setNewKpi(prev => ({ ...prev, siteId: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                <option value="">Tous les sites du mandat</option>
+                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <input type="text" value={newKpi.source} onChange={(e) => setNewKpi(prev => ({ ...prev, source: e.target.value }))} placeholder="Source de la donnée (ex: Smart Building)" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              <input type="text" value={newKpi.responsible} onChange={(e) => setNewKpi(prev => ({ ...prev, responsible: e.target.value }))} placeholder="Responsable" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Fréquence (j)</label>
+                  <input type="number" value={newKpi.frequencyDays} onChange={(e) => setNewKpi(prev => ({ ...prev, frequencyDays: parseInt(e.target.value) || 0 }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Objectif</label>
+                  <input type="number" value={newKpi.objective} onChange={(e) => setNewKpi(prev => ({ ...prev, objective: parseFloat(e.target.value) || 0 }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Seuil alerte</label>
+                  <input type="number" value={newKpi.threshold} onChange={(e) => setNewKpi(prev => ({ ...prev, threshold: parseFloat(e.target.value) || 0 }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg" />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-4">
+              <button onClick={() => setShowKpiForm(false)} className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
+              <button onClick={handleAddKpi} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Ajouter</button>
             </div>
           </div>
         </div>

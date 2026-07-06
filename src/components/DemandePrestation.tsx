@@ -62,6 +62,8 @@ export default function DemandePrestation() {
     const site = sites.find(s => s.id === newDemande.siteId);
     if (!site || !currentUser) return;
 
+    const isFromPrestataire = currentRole === 'Prestataire';
+
     const demande: DemandeType = {
       id: Date.now().toString(),
       siteId: newDemande.siteId,
@@ -72,7 +74,9 @@ export default function DemandePrestation() {
       description: newDemande.description,
       dateCreation: new Date().toISOString().split('T')[0],
       createdBy: currentUser.id,
-      status: 'Brouillon',
+      // Un prestataire signale directement un besoin au PM (pas de brouillon) ;
+      // un PM/DT part d'un brouillon qu'il complète avant transmission.
+      status: isFromPrestataire ? 'Transmise' : 'Brouillon',
       lignes: newDemande.lignes.map((ligne, index) => ({
         id: (index + 1).toString(),
         poste: ligne.poste,
@@ -86,7 +90,7 @@ export default function DemandePrestation() {
       ),
       historique: [{
         date: new Date().toISOString().split('T')[0],
-        action: 'Création',
+        action: isFromPrestataire ? 'Signalée par le prestataire' : 'Création',
         utilisateur: currentUser.name
       }]
     };
@@ -208,13 +212,13 @@ export default function DemandePrestation() {
           <p className="text-gray-600">{demandesPrestation.length} demandes au total</p>
         </div>
         
-        {(currentRole === 'PM' || currentRole === 'DT') && (
+        {(currentRole === 'PM' || currentRole === 'DT' || currentRole === 'Prestataire') && (
           <button
             onClick={() => setShowCreateForm(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Créer une demande
+            {currentRole === 'Prestataire' ? 'Signaler un besoin au PM' : 'Créer une demande'}
           </button>
         )}
       </div>
@@ -389,7 +393,7 @@ export default function DemandePrestation() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Sélectionner un site</option>
-                    {sites.map(site => (
+                    {(currentRole === 'Prestataire' ? sites.filter(s => (currentUser?.sites || []).includes(s.id)) : sites).map(site => (
                       <option key={site.id} value={site.id}>{site.name}</option>
                     ))}
                   </select>

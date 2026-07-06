@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { 
   User, Site, Intervention, Conformity, Prestataire, Document, 
-  BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
+  BudgetPPA, Sinistre, ESGData, EsgObjective, Alert, Connection, Message,
   DemandePrestation, BPUItem, EnergyConnector, EnergyReading, AuditEntry,
-  Obligation, Niveau, ConsigneTemperature, Certification
+  Obligation, Niveau, ConsigneTemperature, Certification, MandateAmendment, KpiDefinition
 } from '../types';
 import { FeeSchedule, FeeTier } from '../utils/feeSchedule';
 import { generateMockData, generateEnergyReadingsForSite } from '../utils/mockData';
@@ -39,6 +39,9 @@ interface AppState {
   niveaux: Niveau[];
   consignesTemperature: ConsigneTemperature[];
   certifications: Certification[];
+  esgObjectives: EsgObjective[];
+  mandateAmendments: MandateAmendment[];
+  kpiDefinitions: KpiDefinition[];
   
   // Actions
   setCurrentRole: (role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => void;
@@ -87,6 +90,10 @@ interface AppState {
   addNiveau: (niveau: Niveau) => void;
   updateConsigneTemperature: (niveauId: string, consigne: number, source: string) => void;
   addCertification: (certification: Certification) => void;
+  upsertEsgObjective: (siteId: string, year: number, objective: Omit<EsgObjective, 'id' | 'siteId' | 'year'>) => void;
+  addMandateAmendment: (amendment: MandateAmendment) => void;
+  addKpiDefinition: (kpi: KpiDefinition) => void;
+  updateKpiDefinition: (id: string, kpi: Partial<KpiDefinition>) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -348,6 +355,31 @@ export const useStore = create<AppState>()(
       addCertification: (certification) => set((state) => ({
         certifications: [...(state.certifications || []), certification]
       })),
+
+      upsertEsgObjective: (siteId, year, objective) => set((state) => {
+        const existing = (state.esgObjectives || []).find(o => o.siteId === siteId && o.year === year);
+        if (existing) {
+          return {
+            esgObjectives: state.esgObjectives.map(o =>
+              o.siteId === siteId && o.year === year ? { ...o, ...objective } : o
+            )
+          };
+        }
+        return {
+          esgObjectives: [...(state.esgObjectives || []), { id: `esgobj-${siteId}-${year}`, siteId, year, ...objective }]
+        };
+      }),
+
+      addMandateAmendment: (amendment) => set((state) => ({
+        mandateAmendments: [amendment, ...(state.mandateAmendments || [])]
+      })),
+
+      addKpiDefinition: (kpi) => set((state) => ({
+        kpiDefinitions: [...(state.kpiDefinitions || []), kpi]
+      })),
+      updateKpiDefinition: (id, kpiUpdate) => set((state) => ({
+        kpiDefinitions: (state.kpiDefinitions || []).map(k => k.id === id ? { ...k, ...kpiUpdate } : k)
+      })),
     }),
     {
       name: 'interface-pm-storage',
@@ -378,7 +410,10 @@ export const useStore = create<AppState>()(
         obligations: state.obligations,
         niveaux: state.niveaux,
         consignesTemperature: state.consignesTemperature,
-        certifications: state.certifications
+        certifications: state.certifications,
+        esgObjectives: state.esgObjectives,
+        mandateAmendments: state.mandateAmendments,
+        kpiDefinitions: state.kpiDefinitions
       }),
       migrate: (persistedState: any, version: number) => {
         const mockData = generateMockData();
@@ -407,7 +442,10 @@ export const useStore = create<AppState>()(
           obligations: Array.isArray(persistedState?.obligations) ? persistedState.obligations : (mockData.obligations || []),
           niveaux: Array.isArray(persistedState?.niveaux) ? persistedState.niveaux : (mockData.niveaux || []),
           consignesTemperature: Array.isArray(persistedState?.consignesTemperature) ? persistedState.consignesTemperature : (mockData.consignesTemperature || []),
-          certifications: Array.isArray(persistedState?.certifications) ? persistedState.certifications : (mockData.certifications || [])
+          certifications: Array.isArray(persistedState?.certifications) ? persistedState.certifications : (mockData.certifications || []),
+          esgObjectives: Array.isArray(persistedState?.esgObjectives) ? persistedState.esgObjectives : (mockData.esgObjectives || []),
+          mandateAmendments: Array.isArray(persistedState?.mandateAmendments) ? persistedState.mandateAmendments : (mockData.mandateAmendments || []),
+          kpiDefinitions: Array.isArray(persistedState?.kpiDefinitions) ? persistedState.kpiDefinitions : (mockData.kpiDefinitions || [])
         };
       },
       onRehydrateStorage: () => (state) => {

@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Bell, Filter, Search, AlertTriangle, CheckCircle, Clock, FileText, Wrench, DollarSign } from 'lucide-react';
+import { Bell, Filter, Search, AlertTriangle, CheckCircle, Clock, FileText, Wrench, DollarSign, Repeat } from 'lucide-react';
+import { computeObligationAlerts } from '../utils/obligationAlerts';
+import { filterSitesByUser } from '../utils/permissions';
 
 export default function Alertes() {
-  const { alerts, markAlertAsRead, currentRole } = useStore();
+  const { alerts, markAlertAsRead, currentRole, currentUser, sites, obligations, documents } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('');
   const [filterRead, setFilterRead] = useState('');
+
+  const visibleSiteIds = new Set(filterSitesByUser(currentUser, currentRole, sites).map(s => s.id));
+  const obligationAlerts = computeObligationAlerts(obligations || [], documents || [])
+    .filter(a => !a.siteId || visibleSiteIds.has(a.siteId));
 
   const filteredAlerts = alerts.filter(alert => {
     const matchesSearch = alert.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -73,6 +79,26 @@ export default function Alertes() {
 
   return (
     <div className="space-y-6">
+      {/* Alertes issues du moteur d'obligations (mandat, certification...) */}
+      {obligationAlerts.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex items-center">
+            <Repeat className="w-5 h-5 text-purple-600 mr-2" />
+            <h3 className="text-base font-bold text-gray-900">Échéances et preuves des obligations</h3>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {obligationAlerts.map(a => (
+              <div key={a.id} className="p-3 flex items-center">
+                <span className={`px-2 py-1 text-xs font-medium rounded mr-3 ${a.severity === 'high' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'}`}>
+                  {a.severity === 'high' ? 'Urgent' : 'À traiter'}
+                </span>
+                <p className="text-sm text-gray-700">{a.message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header avec statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">

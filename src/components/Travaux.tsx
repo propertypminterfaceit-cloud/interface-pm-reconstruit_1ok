@@ -728,8 +728,8 @@ export default function Travaux() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Intervention</label>
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
-                  {newDocument.interventionId ? (
+                {newDocument.interventionId ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
                     <div className="text-sm text-gray-900">
                       {(() => {
                         const intervention = Array.isArray(roleInterventions) ? 
@@ -739,13 +739,20 @@ export default function Travaux() {
                           'Intervention non trouvée';
                       })()}
                     </div>
-                  ) : (
-                    <div className="text-sm text-gray-500">Aucune intervention sélectionnée</div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  L'intervention est pré-sélectionnée depuis la ligne du tableau
-                </p>
+                    <p className="text-xs text-gray-500 mt-1">Pré-sélectionnée depuis le tableau</p>
+                  </div>
+                ) : (
+                  <select
+                    value={newDocument.interventionId}
+                    onChange={(e) => setNewDocument(prev => ({ ...prev, interventionId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Sélectionner une intervention...</option>
+                    {(Array.isArray(roleInterventions) ? roleInterventions : []).map(i => (
+                      <option key={i.id} value={i.id}>{i.siteName} — {(i.description || '').substring(0, 40)}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
