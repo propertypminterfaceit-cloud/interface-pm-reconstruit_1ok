@@ -7,6 +7,7 @@ export interface User {
   sites: string[];
   averageRating?: number;
   mandat?: string; // ex: "PIMCO", "Allianz" — distingue plusieurs Asset Managers rattachés au même rôle
+  prestataireId?: string; // pour un compte de rôle Prestataire : l'entreprise (Prestataire métier) qu'il représente
 }
 
 export interface Site {
@@ -76,6 +77,7 @@ export interface Prestataire {
   interventionsCount: number;
   conformityRate: number;
   averageDelay: number;
+  contractEndDate?: string; // échéance du contrat, pour le suivi de renouvellement
 }
 
 export interface Document {

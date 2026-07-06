@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Wrench, Plus, Filter, Search, Clock, CheckCircle, AlertTriangle, DollarSign, Upload, Camera } from 'lucide-react';
 import { Intervention } from '../types';
+import { filterSitesByUser } from '../utils/permissions';
 
 export default function Interventions() {
-  const { interventions, sites, prestataires, addIntervention, updateIntervention, currentRole } = useStore();
+  const { interventions, sites, prestataires, addIntervention, updateIntervention, currentRole, currentUser } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedIntervention, setSelectedIntervention] = useState<Intervention | null>(null);
@@ -26,7 +27,18 @@ export default function Interventions() {
     comments: [] as string[]
   });
 
-  const filteredInterventions = interventions.filter(intervention => {
+  // Périmètre réellement accessible : un Prestataire ne voit que les
+  // interventions de sa propre entreprise, sur les sites qui lui sont
+  // attribués ; PM/Propriétaire déjà couverts ailleurs ; DT voit tout.
+  const visibleSiteIds = new Set(filterSitesByUser(currentUser, currentRole, sites).map(s => s.id));
+  const scopedInterventions = interventions.filter(intervention => {
+    if (currentRole === 'Prestataire') {
+      return intervention.prestataire === currentUser?.prestataireId && visibleSiteIds.has(intervention.siteId);
+    }
+    return visibleSiteIds.has(intervention.siteId);
+  });
+
+  const filteredInterventions = scopedInterventions.filter(intervention => {
     const matchesSearch = intervention.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          intervention.siteName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !filterStatus || intervention.status === filterStatus;

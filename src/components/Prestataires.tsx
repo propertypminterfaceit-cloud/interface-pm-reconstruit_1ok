@@ -19,7 +19,8 @@ export default function Prestataires() {
     selectedMetiers: [] as string[],
     customMetier: '',
     sites: [] as string[],
-    contacts: {} as { [siteId: string]: { name: string; email: string; phone: string } }
+    contacts: {} as { [siteId: string]: { name: string; email: string; phone: string } },
+    contractEndDate: ''
   });
 
   const metiersByDomain = {
@@ -126,7 +127,8 @@ export default function Prestataires() {
       rating: 0,
       interventionsCount: 0,
       conformityRate: 0,
-      averageDelay: 0
+      averageDelay: 0,
+      contractEndDate: newPrestataire.contractEndDate || undefined
     };
 
     addPrestataire(prestataire);
@@ -138,7 +140,8 @@ export default function Prestataires() {
       selectedMetiers: [],
       customMetier: '',
       sites: [],
-      contacts: {}
+      contacts: {},
+      contractEndDate: ''
     });
   };
 
@@ -265,6 +268,29 @@ export default function Prestataires() {
 
   return (
     <div className="space-y-6">
+      {/* Alerte échéances contractuelles — visible PM/DT */}
+      {(currentRole === 'PM' || currentRole === 'DT') && (() => {
+        const now = Date.now();
+        const withDeadline = (prestataires || [])
+          .filter(p => p.contractEndDate)
+          .map(p => ({ p, daysLeft: Math.ceil((new Date(p.contractEndDate!).getTime() - now) / 86400000) }))
+          .filter(({ daysLeft }) => daysLeft <= 60)
+          .sort((a, b) => a.daysLeft - b.daysLeft);
+        if (withDeadline.length === 0) return null;
+        return (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-orange-900 mb-2">⚠️ Échéances contractuelles à surveiller</h4>
+            <div className="space-y-1">
+              {withDeadline.map(({ p, daysLeft }) => (
+                <p key={p.id} className="text-sm text-orange-800">
+                  <strong>{p.name}</strong> — {daysLeft < 0 ? `contrat expiré depuis ${Math.abs(daysLeft)} jour(s)` : `expire dans ${daysLeft} jour(s)`}
+                </p>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Header avec statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -406,6 +432,20 @@ export default function Prestataires() {
                 </div>
               )}
 
+              {prestataire.contractEndDate && (() => {
+                const daysLeft = Math.ceil((new Date(prestataire.contractEndDate).getTime() - Date.now()) / 86400000);
+                const color = daysLeft < 0 ? 'text-red-600' : daysLeft <= 60 ? 'text-orange-600' : 'text-gray-900';
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Échéance contrat:</span>
+                    <span className={`text-sm font-medium ${color}`}>
+                      {new Date(prestataire.contractEndDate).toLocaleDateString('fr-FR')}
+                      {daysLeft < 0 ? ' (expiré)' : daysLeft <= 60 ? ` (${daysLeft} j)` : ''}
+                    </span>
+                  </div>
+                );
+              })()}
+
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Interventions:</span>
                 <span className="text-sm font-medium text-gray-900">{prestataire.interventionsCount}</span>
@@ -541,6 +581,17 @@ export default function Prestataires() {
                     placeholder="12345678901234"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Échéance du contrat (facultatif)</label>
+                <input
+                  type="date"
+                  value={newPrestataire.contractEndDate}
+                  onChange={(e) => setNewPrestataire(prev => ({ ...prev, contractEndDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Une alerte apparaîtra automatiquement 60 jours avant cette date.</p>
               </div>
 
               <div>

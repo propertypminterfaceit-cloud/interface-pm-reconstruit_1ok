@@ -4,7 +4,7 @@ import { UserCheck, Plus, Filter, Search, Star, Mail, MessageCircle, Users, Send
 import { User, Message } from '../types';
 
 export default function Equipe() {
-  const { users, sites, messages, addUser, addMessage, currentRole, currentUser } = useStore();
+  const { users, sites, messages, prestataires, addUser, addMessage, currentRole, currentUser } = useStore();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showMessageForm, setShowMessageForm] = useState(false);
   const [selectedSite, setSelectedSite] = useState('');
@@ -18,7 +18,8 @@ export default function Equipe() {
     role: 'PM' as string,
     customRole: '',
     sites: [] as string[],
-    isCustomRole: false
+    isCustomRole: false,
+    prestataireId: ''
   });
 
   const [newMessage, setNewMessage] = useState({
@@ -47,7 +48,8 @@ export default function Equipe() {
       phone: newUser.phone,
       role: newUser.isCustomRole ? newUser.customRole : newUser.role,
       sites: newUser.sites,
-      averageRating: 0
+      averageRating: 0,
+      prestataireId: newUser.role === 'Prestataire' ? (newUser.prestataireId || undefined) : undefined
     };
 
     addUser(user);
@@ -59,7 +61,8 @@ export default function Equipe() {
       role: 'PM',
       customRole: '',
       sites: [],
-      isCustomRole: false
+      isCustomRole: false,
+      prestataireId: ''
     });
   };
 
@@ -462,6 +465,23 @@ export default function Equipe() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mt-2"
                     placeholder="Nom du rôle personnalisé"
                   />
+                )}
+
+                {newUser.role === 'Prestataire' && (
+                  <div className="mt-2">
+                    <label className="block text-xs text-gray-500 mb-1">Entreprise représentée</label>
+                    <select
+                      value={newUser.prestataireId}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, prestataireId: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sélectionner une entreprise...</option>
+                      {(prestataires || []).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Détermine quelles interventions/obligations cette personne verra.</p>
+                  </div>
                 )}
               </div>
 

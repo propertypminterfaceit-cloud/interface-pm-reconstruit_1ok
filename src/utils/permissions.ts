@@ -3,20 +3,16 @@ import { User, Site } from '../types';
 /**
  * Retourne la liste des IDs de sites visibles pour l'utilisateur/rôle courant.
  *
- * Règle : DT voit tout le patrimoine (vue consolidée). PM et Propriétaire
- * (Asset Manager) ne voient que les sites qui leur sont explicitement
- * attribués (user.sites) — c'est cette règle qui permet de représenter
- * plusieurs Asset Managers (ex: PIMCO, Allianz) gérant chacun une partie
- * distincte d'un même patrimoine.
- *
- * Le Prestataire garde pour l'instant son comportement existant (géré
- * séparément par module), non modifié dans ce lot.
+ * Règle : DT voit tout le patrimoine (vue consolidée). PM, Propriétaire
+ * (Asset Manager) et Prestataire ne voient que les sites qui leur sont
+ * explicitement attribués (user.sites) — pour le Prestataire, ça correspond
+ * aux sites où il intervient réellement, pas à tout le patrimoine.
  */
 export function getVisibleSiteIds(currentUser: User | null, currentRole: string, allSites: Site[]): string[] {
   if (currentRole === 'DT') {
     return allSites.map(s => s.id);
   }
-  if (currentUser && (currentRole === 'PM' || currentRole === 'Propriétaire')) {
+  if (currentUser && (currentRole === 'PM' || currentRole === 'Propriétaire' || currentRole === 'Prestataire')) {
     return currentUser.sites || [];
   }
   // Pas d'utilisateur démo précis sélectionné (ancien comportement / rôle non concerné) :

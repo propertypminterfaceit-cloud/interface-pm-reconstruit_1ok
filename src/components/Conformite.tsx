@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Shield, AlertTriangle, CheckCircle, Clock, Upload, Filter, Search, Eye } from 'lucide-react';
+import { filterSitesByUser } from '../utils/permissions';
 
 export default function Conformite() {
-  const { conformities, sites, prestataires, updateConformity, currentRole } = useStore();
+  const { conformities, sites, prestataires, updateConformity, currentRole, currentUser } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSite, setFilterSite] = useState('');
@@ -80,7 +81,18 @@ export default function Conformite() {
     { id: '4', name: 'Multi-Services Bâtiment', siret: '45678901234567', metier: 'Multi-technique', status: 'Actif', sites: ['4'], contacts: {}, rating: 4.1, interventionsCount: 31, conformityRate: 92, averageDelay: 2 },
     { id: '5', name: 'Énergie & Maintenance', siret: '56789012345678', metier: 'Énergétique', status: 'Actif', sites: ['5'], contacts: {}, rating: 4.3, interventionsCount: 12, conformityRate: 94, averageDelay: 1 }
   ];
-  const filteredConformities = safeConformities.filter(conformity => {
+
+  // Périmètre réellement accessible : un Prestataire ne voit que ses propres
+  // obligations de conformité (liaison via prestataireId), sur ses sites attribués.
+  const visibleSiteIds = new Set(filterSitesByUser(currentUser, currentRole, safeSites).map(s => s.id));
+  const scopedConformities = safeConformities.filter(conformity => {
+    if (currentRole === 'Prestataire') {
+      return conformity.prestataire === currentUser?.prestataireId && visibleSiteIds.has(conformity.siteId);
+    }
+    return visibleSiteIds.has(conformity.siteId);
+  });
+
+  const filteredConformities = scopedConformities.filter(conformity => {
     const matchesSearch = conformity.obligation.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          conformity.siteName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !filterStatus || conformity.status === filterStatus;

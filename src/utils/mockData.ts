@@ -7,6 +7,16 @@ import { FEE_SCHEDULES, FeeSchedule } from './feeSchedule';
 
 // Génère 12 mois de données de consommation par site, à partir de la surface
 // et de la typologie du site (plus réaliste qu'un tirage purement aléatoire).
+// Calcule une date au format ISO (YYYY-MM-DD), décalée de N jours par rapport à
+// aujourd'hui. Utilisé pour que les échéances de démo (contrats, etc.) restent
+// cohérentes quelle que soit la date à laquelle l'app est testée, plutôt que
+// des dates calendaires figées qui deviendraient toutes "expirées" avec le temps.
+function addDaysToToday(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+}
+
 export function generateEnergyReadingsForSite(site: Site, source: string): EnergyReading[] {
   const months = ['2023-08', '2023-09', '2023-10', '2023-11', '2023-12', '2024-01'];
   const isChauffé = site.typologie.includes('HOTEL') || site.typologie.includes('TERTIAIRE');
@@ -83,7 +93,7 @@ export function generateMockData() {
     // pour refléter un cas réel type PIMCO / Allianz gérant chacun une partie du patrimoine.
     { id: '6', name: 'Amélie Rousseau', email: 'a.rousseau@pimco.com', role: 'Propriétaire', sites: ['1', '4'], mandat: 'PIMCO' },
     { id: '7', name: 'Marc Lefèvre', email: 'm.lefevre@allianz.com', role: 'Propriétaire', sites: ['2', '3', '5'], mandat: 'Allianz' },
-    { id: '8', name: 'Karim Haddad', email: 'k.haddad@prestataire.fr', role: 'Prestataire', sites: ['1', '2', '3'] },
+    { id: '8', name: 'Karim Haddad', email: 'k.haddad@prestataire.fr', role: 'Prestataire', sites: ['1', '2', '3'], prestataireId: '1' },
   ];
 
   const sites: Site[] = [
@@ -293,7 +303,8 @@ export function generateMockData() {
       rating: 4.2,
       interventionsCount: 15,
       conformityRate: 95,
-      averageDelay: 2
+      averageDelay: 2,
+      contractEndDate: addDaysToToday(20) // échéance proche, pour tester l'alerte
     },
     {
       id: '2',
@@ -308,7 +319,8 @@ export function generateMockData() {
       rating: 4.5,
       interventionsCount: 22,
       conformityRate: 98,
-      averageDelay: 1
+      averageDelay: 1,
+      contractEndDate: addDaysToToday(-10) // déjà échu, pour tester ce cas aussi
     },
     {
       id: '3',
@@ -323,7 +335,8 @@ export function generateMockData() {
       rating: 3.8,
       interventionsCount: 18,
       conformityRate: 88,
-      averageDelay: 3
+      averageDelay: 3,
+      contractEndDate: addDaysToToday(240) // confortablement loin
     },
     {
       id: '4',
@@ -338,7 +351,8 @@ export function generateMockData() {
       rating: 4.1,
       interventionsCount: 31,
       conformityRate: 92,
-      averageDelay: 2
+      averageDelay: 2,
+      contractEndDate: addDaysToToday(75)
     },
     {
       id: '5',
@@ -353,7 +367,8 @@ export function generateMockData() {
       rating: 4.3,
       interventionsCount: 12,
       conformityRate: 94,
-      averageDelay: 1
+      averageDelay: 1,
+      contractEndDate: addDaysToToday(400)
     },
     {
       id: '6',

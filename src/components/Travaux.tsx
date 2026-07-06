@@ -49,13 +49,14 @@ export default function Travaux() {
     const safeInterventions = Array.isArray(interventions) ? interventions : [];
     
     if (currentRole === 'Prestataire') {
-      // Pour les prestataires : interventions assignées à ce prestataire
-      return safeInterventions.filter(intervention => {
-        // Afficher toutes les interventions assignées au prestataire connecté
-        return intervention && 
-               intervention.prestataire && 
-               intervention.prestataire !== '';
-      });
+      // Un prestataire ne voit que les interventions de SON entreprise
+      // (liaison via prestataireId), sur les sites qui lui sont attribués.
+      const mySites = new Set(currentUser?.sites || []);
+      return safeInterventions.filter(intervention =>
+        intervention &&
+        intervention.prestataire === currentUser?.prestataireId &&
+        mySites.has(intervention.siteId)
+      );
     } else if (currentRole === 'PM' || currentRole === 'DT') {
       // Pour PM/DT : toutes les interventions
       return safeInterventions;
