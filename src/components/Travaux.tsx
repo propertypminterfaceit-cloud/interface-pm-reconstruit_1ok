@@ -111,6 +111,13 @@ export default function Travaux() {
   // Le validateur "dont c'est le tour" est déterminé par la position dans
   // requiredValidators — ex: ['PM', 'DT', 'Propriétaire'] signifie que le PM
   // valide en premier, puis le DT, puis le Propriétaire, dans cet ordre.
+  // Compte réel des devis déjà uploadés — nécessaire pour bloquer la
+  // validation tant que le nombre de devis requis n'est pas atteint.
+  const getDevisCount = (intervention: any): number => {
+    if (!Array.isArray(intervention.documents)) return 0;
+    return intervention.documents.filter((d: any) => typeof d === 'string' && d.includes('devis')).length;
+  };
+
   const getCurrentValidatorRole = (intervention: any): string | undefined => {
     if (!Array.isArray(intervention.requiredValidators)) return undefined;
     return intervention.requiredValidators[intervention.validationLevel || 0];
@@ -621,14 +628,26 @@ export default function Travaux() {
                         {intervention && intervention.validationLevel ? intervention.validationLevel : 0}/
                         {intervention && Array.isArray(intervention.requiredValidators) ? intervention.requiredValidators.length : 0} validations
                       </div>
-                      {intervention && intervention.status === 'En attente' && getCurrentValidatorRole(intervention) === currentRole && (
-                        <button
-                          onClick={() => handleValidateStep(intervention)}
-                          className="mt-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                        >
-                          Valider cette étape
-                        </button>
-                      )}
+                      {intervention && intervention.status === 'En attente' && getCurrentValidatorRole(intervention) === currentRole && (() => {
+                        const req = getValidationRequirements(intervention.amount || 0, intervention.siteId);
+                        const devisCount = getDevisCount(intervention);
+                        const devisOk = devisCount >= req.devis;
+                        if (!devisOk) {
+                          return (
+                            <p className="mt-1 text-xs text-orange-600">
+                              {devisCount}/{req.devis} devis requis avant de pouvoir valider
+                            </p>
+                          );
+                        }
+                        return (
+                          <button
+                            onClick={() => handleValidateStep(intervention)}
+                            className="mt-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            Valider cette étape
+                          </button>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -636,12 +655,16 @@ export default function Travaux() {
                       {/* Devis */}
                       <div className="flex items-center text-xs">
                         <span className="w-12 text-gray-600">Devis:</span>
-                        <span className={`px-1 py-0.5 rounded text-xs ${
-                          (intervention && Array.isArray(intervention.documents) && intervention.documents.filter(d => typeof d === 'string').some(d => d.includes('devis'))) ? 
-                          'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {(intervention && Array.isArray(intervention.documents) && intervention.documents.filter(d => typeof d === 'string').some(d => d.includes('devis'))) ? '✓' : '○'}
-                        </span>
+                        {(() => {
+                          const count = getDevisCount(intervention);
+                          const req = getValidationRequirements(intervention.amount || 0, intervention.siteId).devis;
+                          const ok = count >= req;
+                          return (
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${ok ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                              {count}/{req}
+                            </span>
+                          );
+                        })()}
                       </div>
                       
                       {/* Compte-rendu */}
