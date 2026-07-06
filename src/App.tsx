@@ -19,6 +19,8 @@ import DemandePrestation from './components/DemandePrestation';
 import Messagerie from './components/Messagerie';
 import Honoraires from './components/Honoraires';
 import AuditLog from './components/AuditLog';
+import SpecificitesMandat from './components/SpecificitesMandat';
+import Certifications from './components/Certifications';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Zustand + persist hydrate le store de façon synchrone au premier rendu
@@ -113,6 +115,17 @@ function App() {
           );
         }
         return <AuditLog />;
+      case 'specificites-mandat':
+        if (currentRole !== 'DT') {
+          return (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center max-w-md mx-auto mt-12">
+              <p className="text-gray-600">Les spécificités du mandat sont réservées au Directeur Technique.</p>
+            </div>
+          );
+        }
+        return <SpecificitesMandat />;
+      case 'certifications':
+        return <Certifications />;
       case 'travaux':
         return <Travaux />;
       case 'demande-prestation':

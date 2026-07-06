@@ -6,7 +6,7 @@ import { getMandatForSite } from '../utils/permissions';
 import { computeChantierFee } from '../utils/feeSchedule';
 
 export default function Travaux() {
-  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention, users, feeSchedules } = useStore();
+  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention, users, feeSchedules, obligations } = useStore();
   
   // 🔒 VALIDATION DES DÉPENDANCES CRITIQUES
   if (!Array.isArray(interventions) || !Array.isArray(sites) || !currentRole) {
@@ -108,11 +108,36 @@ export default function Travaux() {
     }
   };
 
-  const getValidationRequirements = (amount: number) => {
-    if (amount < 10000) return { devis: 1, validators: ['PM', 'DT'] };
-    if (amount < 50000) return { devis: 2, validators: ['PM', 'DT', 'Propriétaire'] };
-    if (amount < 100000) return { devis: 3, validators: ['PM', 'DT', 'Propriétaire'] };
-    return { devis: 3, validators: ['PM', 'DT', 'Propriétaire', 'Directeur de Pôle'] };
+  const getValidationRequirements = (amount: number, siteId?: string) => {
+    // Les obligations actives issues du mandat (moteur d'obligations générique)
+    // priment sur les seuils par défaut — c'est ce qui permet à chaque mandat
+    // d'avoir ses propres règles de validation, sans code spécifique par client.
+    const mandat = siteId ? getMandatForSite(siteId, users, sites) : undefined;
+    const applicable = (obligations || []).filter(o =>
+      o.status === 'Active' &&
+      o.ruleType === 'SeuilValidation' &&
+      o.targetModule === 'Travaux' &&
+      (o.mandat ? o.mandat === mandat : (!o.siteId || o.siteId === siteId)) &&
+      o.params.threshold !== undefined &&
+      amount > o.params.threshold
+    );
+
+    if (applicable.length > 0) {
+      const devis = Math.max(...applicable.map(o => o.params.devisRequired || 1));
+      const validatorsSet = new Set<string>();
+      applicable.forEach(o => (o.params.validatorsRequired || []).forEach(v => validatorsSet.add(v)));
+      return {
+        devis,
+        validators: Array.from(validatorsSet),
+        sourceLabels: applicable.map(o => o.sourceLabel)
+      };
+    }
+
+    // Repli : seuils par défaut si aucune obligation de mandat ne s'applique à ce site
+    if (amount < 10000) return { devis: 1, validators: ['PM', 'DT'], sourceLabels: [] };
+    if (amount < 50000) return { devis: 2, validators: ['PM', 'DT', 'Propriétaire'], sourceLabels: [] };
+    if (amount < 100000) return { devis: 3, validators: ['PM', 'DT', 'Propriétaire'], sourceLabels: [] };
+    return { devis: 3, validators: ['PM', 'DT', 'Propriétaire', 'Directeur de Pôle'], sourceLabels: [] };
   };
 
   const handleValidateDocument = (documentId: string, amount: number) => {
@@ -179,8 +204,8 @@ export default function Travaux() {
     const site = Array.isArray(sites) ? sites.find(s => s.id === newTravaux.siteId) : null;
     if (!site) return;
 
-    const requirements = getValidationRequirements(newTravaux.amount);
-    
+    const requirements = getValidationRequirements(newTravaux.amount, newTravaux.siteId);
+
     const intervention = {
       id: Date.now().toString(),
       siteId: newTravaux.siteId,
@@ -827,11 +852,14 @@ export default function Travaux() {
                   <h4 className="font-semibold text-blue-900 mb-2">Validation requise</h4>
                   <div className="text-sm text-blue-800">
                     {(() => {
-                      const requirements = getValidationRequirements(newTravaux.amount);
+                      const requirements = getValidationRequirements(newTravaux.amount, newTravaux.siteId);
                       return (
                         <div>
                           <p><strong>Nombre de devis requis:</strong> {requirements.devis}</p>
                           <p><strong>Validateurs:</strong> {requirements.validators.join(', ')}</p>
+                          {requirements.sourceLabels && requirements.sourceLabels.length > 0 && (
+                            <p className="text-xs text-blue-600 mt-1">Règle appliquée : {requirements.sourceLabels.join(', ')}</p>
+                          )}
                         </div>
                       );
                     })()}

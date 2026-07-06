@@ -9,6 +9,7 @@ export const roleConfig = {
     { id: 'conformite', label: 'Conformité réglementaire', icon: 'Shield', group: 'CONFORMITÉ & ESG' },
     { id: 'esg', label: 'ESG', icon: 'Leaf', group: 'CONFORMITÉ & ESG' },
     { id: 'energie', label: 'Énergie & Smart Building', icon: 'Gauge', group: 'CONFORMITÉ & ESG' },
+    { id: 'certifications', label: 'Certifications (option à activer)', icon: 'Award', group: 'CONFORMITÉ & ESG' },
     { id: 'alertes', label: 'Alertes', icon: 'Bell', group: 'CONFORMITÉ & ESG' },
     // UNIVERS 3 — EXPLOITATION & OPÉRATIONS
     { id: 'interventions', label: 'Urgence & ticket', icon: 'Zap', group: 'EXPLOITATION & OPÉRATIONS' },
@@ -30,6 +31,7 @@ export const roleConfig = {
     { id: 'conformite', label: 'Conformité réglementaire', icon: 'Shield', group: 'CONFORMITÉ & ESG' },
     { id: 'esg', label: 'ESG', icon: 'Leaf', group: 'CONFORMITÉ & ESG' },
     { id: 'energie', label: 'Énergie & Smart Building', icon: 'Gauge', group: 'CONFORMITÉ & ESG' },
+    { id: 'certifications', label: 'Certifications (option à activer)', icon: 'Award', group: 'CONFORMITÉ & ESG' },
     { id: 'alertes', label: 'Alertes', icon: 'Bell', group: 'CONFORMITÉ & ESG' },
     // UNIVERS 3 — EXPLOITATION & OPÉRATIONS
     { id: 'interventions', label: 'Urgence & ticket', icon: 'Zap', group: 'EXPLOITATION & OPÉRATIONS' },
@@ -43,6 +45,7 @@ export const roleConfig = {
     // UNIVERS 5 — ADMINISTRATION (réservé DT : décisions structurantes, pas de la gestion quotidienne)
     { id: 'connexion', label: 'Connexion', icon: 'Link', group: 'ADMINISTRATION' },
     { id: 'honoraires', label: 'Honoraires (barèmes)', icon: 'Wallet', group: 'ADMINISTRATION' },
+    { id: 'specificites-mandat', label: 'Spécificités du mandat', icon: 'FileSignature', group: 'ADMINISTRATION' },
     { id: 'audit', label: "Journal d'audit", icon: 'History', group: 'ADMINISTRATION' },
   ],
   Prestataire: [
@@ -63,6 +66,7 @@ export const roleConfig = {
     { id: 'sinistres', label: 'Sinistres', icon: 'AlertTriangle' },
     { id: 'esg', label: 'ESG', icon: 'Leaf' },
     { id: 'energie', label: 'Énergie & Smart Building', icon: 'Gauge' },
+    { id: 'certifications', label: 'Certifications (option à activer)', icon: 'Award' },
     { id: 'messagerie', label: 'Messagerie', icon: 'MessageCircle' },
   ],
 };

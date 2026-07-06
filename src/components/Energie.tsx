@@ -12,6 +12,10 @@ const PROVIDERS: { value: EnergyConnector['provider']; description: string }[] =
     description: 'GTB / supervision multi-fluides (électricité, CVC, éclairage) — leader du marché.'
   },
   {
+    value: 'Dnergy',
+    description: 'Solution Smart Building : supervision fine par niveau (consignes de température, écarts, alertes).'
+  },
+  {
     value: 'Ubigreen Energy',
     description: 'Suivi multi-sites, multi-fluides, pensé pour les gestionnaires de parc immobilier.'
   },
@@ -36,7 +40,8 @@ function formatNumber(n: number): string {
 export default function Energie() {
   const {
     sites, energyConnectors, energyReadings,
-    connectEnergyProvider, disconnectEnergyProvider
+    connectEnergyProvider, disconnectEnergyProvider,
+    niveaux, consignesTemperature, obligations
   } = useStore();
 
   const [selectedProviderBySite, setSelectedProviderBySite] = useState<Record<string, EnergyConnector['provider']>>({});
@@ -313,6 +318,65 @@ export default function Energie() {
             <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
               <span className="flex items-center"><span className="w-2.5 h-2.5 bg-yellow-400 rounded-sm mr-1.5" /> Électricité</span>
               <span className="flex items-center"><span className="w-2.5 h-2.5 bg-orange-300 rounded-sm mr-1.5" /> Gaz</span>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Panneau Smart Building — consignes de température par niveau (Dnergy) */}
+      {sites.map(site => {
+        const connector = getConnector(site.id);
+        if (connector?.status !== 'Connecté' || connector.provider !== 'Dnergy') return null;
+
+        const siteNiveaux = (niveaux || []).filter(n => n.siteId === site.id).sort((a, b) => a.order - b.order);
+        if (siteNiveaux.length === 0) return null;
+
+        // Exigence Smart Building active pour ce site, si elle existe (plage autorisée)
+        const consigneObligation = (obligations || []).find(o =>
+          o.siteId === site.id && o.ruleType === 'ConsigneTemperature' && o.status === 'Active'
+        );
+
+        return (
+          <div key={`dnergy-${site.id}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="font-bold text-gray-900 flex items-center">
+                  <Gauge className="w-4 h-4 mr-2 text-blue-600" />
+                  {site.name} — Smart Building (Dnergy)
+                </h3>
+                <p className="text-xs text-gray-500">Dernière synchronisation : {connector.lastSync}</p>
+              </div>
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Connecté
+              </span>
+            </div>
+
+            {consigneObligation && (
+              <p className="text-xs text-gray-500 mb-3">
+                Exigence active ({consigneObligation.sourceLabel}) : consigne autorisée entre {consigneObligation.params.temperatureMin}°C et {consigneObligation.params.temperatureMax}°C
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {siteNiveaux.map(niveau => {
+                const consigne = (consignesTemperature || []).find(c => c.niveauId === niveau.id);
+                const min = consigneObligation?.params.temperatureMin;
+                const max = consigneObligation?.params.temperatureMax;
+                const ecart = consigne && min !== undefined && max !== undefined && (consigne.consigne < min || consigne.consigne > max);
+
+                return (
+                  <div
+                    key={niveau.id}
+                    className={`p-3 rounded-lg border text-center ${ecart ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
+                  >
+                    <p className="text-xs text-gray-500">{niveau.label}</p>
+                    <p className={`text-lg font-bold ${ecart ? 'text-red-600' : 'text-gray-900'}`}>
+                      {consigne ? `${consigne.consigne}°C` : '—'}
+                    </p>
+                    {ecart && <p className="text-xs text-red-600 mt-1">Hors plage</p>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

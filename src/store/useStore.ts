@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware';
 import { 
   User, Site, Intervention, Conformity, Prestataire, Document, 
   BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
-  DemandePrestation, BPUItem, EnergyConnector, EnergyReading, AuditEntry
+  DemandePrestation, BPUItem, EnergyConnector, EnergyReading, AuditEntry,
+  Obligation, Niveau, ConsigneTemperature, Certification
 } from '../types';
 import { FeeSchedule, FeeTier } from '../utils/feeSchedule';
 import { generateMockData, generateEnergyReadingsForSite } from '../utils/mockData';
@@ -34,6 +35,10 @@ interface AppState {
   energyReadings: EnergyReading[];
   feeSchedules: FeeSchedule[];
   auditLog: AuditEntry[];
+  obligations: Obligation[];
+  niveaux: Niveau[];
+  consignesTemperature: ConsigneTemperature[];
+  certifications: Certification[];
   
   // Actions
   setCurrentRole: (role: 'PM' | 'DT' | 'Prestataire' | 'Propriétaire') => void;
@@ -77,6 +82,11 @@ interface AppState {
   // pas une opération quotidienne du PM.
   upsertFeeSchedule: (mandat: string, tiers: FeeTier[]) => void;
   addAuditEntry: (entry: AuditEntry) => void;
+  addObligation: (obligation: Obligation) => void;
+  updateObligation: (id: string, obligation: Partial<Obligation>) => void;
+  addNiveau: (niveau: Niveau) => void;
+  updateConsigneTemperature: (niveauId: string, consigne: number, source: string) => void;
+  addCertification: (certification: Certification) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -302,6 +312,42 @@ export const useStore = create<AppState>()(
       addAuditEntry: (entry) => set((state) => ({
         auditLog: [entry, ...(state.auditLog || [])]
       })),
+
+      addObligation: (obligation) => set((state) => ({
+        obligations: [...(state.obligations || []), obligation]
+      })),
+      updateObligation: (id, obligationUpdate) => set((state) => ({
+        obligations: (state.obligations || []).map(o =>
+          o.id === id ? { ...o, ...obligationUpdate } : o
+        )
+      })),
+
+      addNiveau: (niveau) => set((state) => ({
+        niveaux: [...(state.niveaux || []), niveau]
+      })),
+
+      updateConsigneTemperature: (niveauId, consigne, source) => set((state) => {
+        const existing = (state.consignesTemperature || []).find(c => c.niveauId === niveauId);
+        const niveau = (state.niveaux || []).find(n => n.id === niveauId);
+        const now = new Date().toLocaleString('fr-FR');
+        if (existing) {
+          return {
+            consignesTemperature: state.consignesTemperature.map(c =>
+              c.niveauId === niveauId ? { ...c, consigne, source, lastSync: now } : c
+            )
+          };
+        }
+        return {
+          consignesTemperature: [
+            ...(state.consignesTemperature || []),
+            { id: `ct-${niveauId}`, niveauId, siteId: niveau?.siteId || '', consigne, source, lastSync: now }
+          ]
+        };
+      }),
+
+      addCertification: (certification) => set((state) => ({
+        certifications: [...(state.certifications || []), certification]
+      })),
     }),
     {
       name: 'interface-pm-storage',
@@ -328,7 +374,11 @@ export const useStore = create<AppState>()(
         energyConnectors: state.energyConnectors,
         energyReadings: state.energyReadings,
         feeSchedules: state.feeSchedules,
-        auditLog: state.auditLog
+        auditLog: state.auditLog,
+        obligations: state.obligations,
+        niveaux: state.niveaux,
+        consignesTemperature: state.consignesTemperature,
+        certifications: state.certifications
       }),
       migrate: (persistedState: any, version: number) => {
         const mockData = generateMockData();
@@ -353,7 +403,11 @@ export const useStore = create<AppState>()(
           energyConnectors: Array.isArray(persistedState?.energyConnectors) ? persistedState.energyConnectors : mockData.energyConnectors,
           energyReadings: Array.isArray(persistedState?.energyReadings) ? persistedState.energyReadings : mockData.energyReadings,
           feeSchedules: Array.isArray(persistedState?.feeSchedules) ? persistedState.feeSchedules : mockData.feeSchedules,
-          auditLog: Array.isArray(persistedState?.auditLog) ? persistedState.auditLog : (mockData.auditLog || [])
+          auditLog: Array.isArray(persistedState?.auditLog) ? persistedState.auditLog : (mockData.auditLog || []),
+          obligations: Array.isArray(persistedState?.obligations) ? persistedState.obligations : (mockData.obligations || []),
+          niveaux: Array.isArray(persistedState?.niveaux) ? persistedState.niveaux : (mockData.niveaux || []),
+          consignesTemperature: Array.isArray(persistedState?.consignesTemperature) ? persistedState.consignesTemperature : (mockData.consignesTemperature || []),
+          certifications: Array.isArray(persistedState?.certifications) ? persistedState.certifications : (mockData.certifications || [])
         };
       },
       onRehydrateStorage: () => (state) => {

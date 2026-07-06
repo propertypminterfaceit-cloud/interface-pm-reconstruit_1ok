@@ -139,7 +139,7 @@ export interface Sinistre {
 
 export interface AuditEntry {
   id: string;
-  entityType: 'BudgetPPA' | 'Document' | 'Sinistre' | 'Connexion';
+  entityType: 'BudgetPPA' | 'Document' | 'Sinistre' | 'Connexion' | 'Obligation';
   entityId: string;
   entityLabel: string; // description lisible (ex: "Rénovation CTA - Tour Montparnasse")
   action: string; // ex: "Validé", "Refusé", "Désactivé"
@@ -147,6 +147,69 @@ export interface AuditEntry {
   performedByRole: string;
   timestamp: string;
   comment?: string;
+}
+
+/**
+ * Moteur d'obligations générique — une obligation peut provenir du mandat,
+ * d'une certification, de l'ESG, du Smart Building, ou d'une exigence interne.
+ * C'est la même structure quelle que soit la source : on évite ainsi d'avoir
+ * un système parallèle par type d'exigence.
+ */
+export interface Obligation {
+  id: string;
+  source: 'Mandat' | 'Certification' | 'ESG' | 'SmartBuilding' | 'Interne';
+  sourceLabel: string; // ex: "Mandat PIMCO", "Certification BREEAM"
+  siteId?: string;
+  mandat?: string;
+  clauseReference?: string; // traçabilité vers la clause source (ex: "Article 12.3")
+  title: string; // ex: "3 devis obligatoires au-delà de 10 000€"
+  targetModule: 'Travaux' | 'Conformite' | 'Documents' | 'ESG' | 'BudgetPPA' | 'Prestataires' | 'Energie';
+  ruleType: 'SeuilValidation' | 'Frequence' | 'ObligationDocumentaire' | 'KPI' | 'ConsigneTemperature' | 'Autre';
+  params: {
+    threshold?: number;
+    devisRequired?: number;
+    validatorsRequired?: string[];
+    frequencyDays?: number;
+    documentType?: string;
+    temperatureMin?: number;
+    temperatureMax?: number;
+  };
+  status: 'Extraite (IA)' | 'En attente de validation' | 'Active' | 'Rejetée';
+  createdByName?: string;
+  createdAt?: string;
+  validatedByName?: string;
+  validatedAt?: string;
+  validationComment?: string;
+}
+
+/** Niveau d'un bâtiment (RDC, R+1...) — nécessaire pour des données comme les
+ * consignes de température, qui varient d'un niveau à l'autre sur un même site. */
+export interface Niveau {
+  id: string;
+  siteId: string;
+  label: string;
+  order: number;
+}
+
+/** Consigne de température remontée par un connecteur (ex: Dnergy), par niveau. */
+export interface ConsigneTemperature {
+  id: string;
+  niveauId: string;
+  siteId: string;
+  consigne: number;
+  source: string;
+  lastSync: string;
+}
+
+export interface Certification {
+  id: string;
+  siteId: string;
+  siteName: string;
+  type: 'HQE' | 'BREEAM' | 'OSMOZ' | 'SmartScore' | 'R2S' | 'Autre';
+  niveau?: string;
+  dateObtention: string;
+  dateExpiration?: string;
+  status: 'Active' | 'En renouvellement' | 'Expirée';
 }
 
 export interface ESGData {
@@ -204,7 +267,7 @@ export interface Message {
 
 export interface EnergyConnector {
   id: string;
-  provider: 'Schneider EcoStruxure Building Operation' | 'Ubigreen Energy' | 'Advizeo' | 'Deltaconso Expert' | 'API générique';
+  provider: 'Schneider EcoStruxure Building Operation' | 'Ubigreen Energy' | 'Advizeo' | 'Deltaconso Expert' | 'Dnergy' | 'API générique';
   siteId: string;
   siteName: string;
   status: 'Connecté' | 'Déconnecté' | 'Connexion en cours' | 'Erreur';

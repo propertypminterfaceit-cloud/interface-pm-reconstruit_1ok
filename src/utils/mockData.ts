@@ -1,7 +1,8 @@
 import { 
   User, Site, Intervention, Conformity, Prestataire, Document, 
   BudgetPPA, Sinistre, ESGData, Alert, Connection, Message,
-  DemandePrestation, BPUItem, EnergyConnector, EnergyReading
+  DemandePrestation, BPUItem, EnergyConnector, EnergyReading,
+  Obligation, Niveau, ConsigneTemperature, Certification
 } from '../types';
 import { FEE_SCHEDULES, FeeSchedule } from './feeSchedule';
 
@@ -60,14 +61,17 @@ function generateEnergyData(sites: Site[]) {
 
   const energyConnectors: EnergyConnector[] = sites.map((site, index) => {
     const connected = index < 3; // les 3 premiers sites du parc sont déjà connectés
+    // Le premier site est connecté via Dnergy pour illustrer le Smart Building
+    // (consignes par niveau) ; les autres cyclent sur les fournisseurs génériques.
+    const provider: EnergyConnector['provider'] = index === 0 ? 'Dnergy' : providers[(index - 1) % providers.length];
     return {
       id: `conn-energy-${site.id}`,
-      provider: providers[index % providers.length],
+      provider,
       siteId: site.id,
       siteName: site.name,
       status: connected ? 'Connecté' : 'Déconnecté',
       lastSync: connected ? '2024-01-15 06:00:00' : 'Jamais',
-      apiEndpoint: connected ? `https://api.${providers[index % providers.length].toLowerCase().replace(/[^a-z]+/g, '-')}.com/v1/sites/${site.id}` : undefined
+      apiEndpoint: connected ? `https://api.${provider.toLowerCase().replace(/[^a-z]+/g, '-')}.com/v1/sites/${site.id}` : undefined
     };
   });
 
@@ -80,6 +84,138 @@ function generateEnergyData(sites: Site[]) {
   });
 
   return { energyConnectors, energyReadings };
+}
+
+function generateMandateAndSmartBuildingData() {
+  // Niveaux du site 1 (Tour Montparnasse) — nécessaire pour des consignes de
+  // température qui varient par niveau, pas juste par site.
+  const niveaux: Niveau[] = [
+    { id: 'niv-1-0', siteId: '1', label: 'RDC', order: 0 },
+    { id: 'niv-1-1', siteId: '1', label: 'R+1', order: 1 },
+    { id: 'niv-1-2', siteId: '1', label: 'R+2', order: 2 },
+    { id: 'niv-1-3', siteId: '1', label: 'R+3', order: 3 },
+    { id: 'niv-1-4', siteId: '1', label: 'R+4', order: 4 }
+  ];
+
+  // Consignes remontées par Dnergy (déjà connecté sur ce site pour la démo).
+  // Le R+4 est volontairement hors de la plage autorisée par l'obligation
+  // Smart Building ci-dessous, pour démontrer la détection d'écart.
+  const consignesTemperature: ConsigneTemperature[] = [
+    { id: 'ct-niv-1-0', niveauId: 'niv-1-0', siteId: '1', consigne: 21, source: 'Dnergy', lastSync: '2024-01-15 06:00:00' },
+    { id: 'ct-niv-1-1', niveauId: 'niv-1-1', siteId: '1', consigne: 22, source: 'Dnergy', lastSync: '2024-01-15 06:00:00' },
+    { id: 'ct-niv-1-2', niveauId: 'niv-1-2', siteId: '1', consigne: 20, source: 'Dnergy', lastSync: '2024-01-15 06:00:00' },
+    { id: 'ct-niv-1-3', niveauId: 'niv-1-3', siteId: '1', consigne: 21.5, source: 'Dnergy', lastSync: '2024-01-15 06:00:00' },
+    { id: 'ct-niv-1-4', niveauId: 'niv-1-4', siteId: '1', consigne: 23, source: 'Dnergy', lastSync: '2024-01-15 06:00:00' }
+  ];
+
+  const obligations: Obligation[] = [
+    {
+      id: 'obl-1',
+      source: 'Mandat',
+      sourceLabel: 'Mandat PIMCO',
+      mandat: 'PIMCO',
+      clauseReference: 'Article 8.2',
+      title: '3 devis obligatoires au-delà de 10 000€ de travaux',
+      targetModule: 'Travaux',
+      ruleType: 'SeuilValidation',
+      params: { threshold: 10000, devisRequired: 3, validatorsRequired: ['PM', 'DT'] },
+      status: 'Active',
+      createdByName: 'Laurent Moreau',
+      createdAt: '02/01/2024 09:00',
+      validatedByName: 'Laurent Moreau',
+      validatedAt: '02/01/2024 09:00'
+    },
+    {
+      id: 'obl-2',
+      source: 'Mandat',
+      sourceLabel: 'Mandat PIMCO',
+      mandat: 'PIMCO',
+      clauseReference: 'Article 8.5',
+      title: 'Validation du Propriétaire obligatoire au-delà de 25 000€',
+      targetModule: 'Travaux',
+      ruleType: 'SeuilValidation',
+      params: { threshold: 25000, validatorsRequired: ['PM', 'DT', 'Propriétaire'] },
+      status: 'Active',
+      createdByName: 'Laurent Moreau',
+      createdAt: '02/01/2024 09:05',
+      validatedByName: 'Laurent Moreau',
+      validatedAt: '02/01/2024 09:05'
+    },
+    {
+      id: 'obl-3',
+      source: 'Mandat',
+      sourceLabel: 'Mandat Allianz',
+      mandat: 'Allianz',
+      clauseReference: 'Article 14.1',
+      title: 'Reporting technique mensuel obligatoire',
+      targetModule: 'Documents',
+      ruleType: 'Frequence',
+      params: { frequencyDays: 30, documentType: 'RMA' },
+      status: 'En attente de validation',
+      createdByName: 'Extraction automatique (IA)',
+      createdAt: '15/01/2024 10:00'
+    },
+    {
+      id: 'obl-4',
+      source: 'SmartBuilding',
+      sourceLabel: 'Exigence Smart Building — Tour Montparnasse',
+      siteId: '1',
+      title: 'Plage de consigne de température autorisée : 20°C à 22°C',
+      targetModule: 'Energie',
+      ruleType: 'ConsigneTemperature',
+      params: { temperatureMin: 20, temperatureMax: 22 },
+      status: 'Active',
+      createdByName: 'Laurent Moreau',
+      createdAt: '03/01/2024 08:00',
+      validatedByName: 'Laurent Moreau',
+      validatedAt: '03/01/2024 08:00'
+    },
+    {
+      id: 'obl-5',
+      source: 'Certification',
+      sourceLabel: 'Certification BREEAM — Tour Montparnasse',
+      siteId: '1',
+      title: 'Collecte trimestrielle des preuves de performance énergétique',
+      targetModule: 'Documents',
+      ruleType: 'Frequence',
+      params: { frequencyDays: 90, documentType: 'ESG' },
+      status: 'Active',
+      createdByName: 'Laurent Moreau',
+      createdAt: '10/01/2024 09:00',
+      validatedByName: 'Laurent Moreau',
+      validatedAt: '10/01/2024 09:00'
+    },
+    {
+      id: 'obl-6',
+      source: 'Certification',
+      sourceLabel: 'Certification BREEAM — Tour Montparnasse',
+      siteId: '1',
+      title: 'Suivi du confort et de la qualité de service occupants',
+      targetModule: 'ESG',
+      ruleType: 'KPI',
+      params: {},
+      status: 'Active',
+      createdByName: 'Laurent Moreau',
+      createdAt: '10/01/2024 09:05',
+      validatedByName: 'Laurent Moreau',
+      validatedAt: '10/01/2024 09:05'
+    }
+  ];
+
+  const certifications: Certification[] = [
+    {
+      id: 'cert-1',
+      siteId: '1',
+      siteName: 'Tour Montparnasse',
+      type: 'BREEAM',
+      niveau: 'Very Good',
+      dateObtention: '2022-06-01',
+      dateExpiration: '2027-06-01',
+      status: 'Active'
+    }
+  ];
+
+  return { obligations, niveaux, consignesTemperature, certifications };
 }
 
 export function generateMockData() {
@@ -719,6 +855,7 @@ export function generateMockData() {
   ];
 
   const { energyConnectors, energyReadings } = generateEnergyData(sites);
+  const { obligations, niveaux, consignesTemperature, certifications } = generateMandateAndSmartBuildingData();
 
   return {
     users,
@@ -738,6 +875,10 @@ export function generateMockData() {
     energyConnectors,
     energyReadings,
     feeSchedules: JSON.parse(JSON.stringify(FEE_SCHEDULES)) as FeeSchedule[],
-    auditLog: []
+    auditLog: [],
+    obligations,
+    niveaux,
+    consignesTemperature,
+    certifications
   };
 }

@@ -7,15 +7,18 @@ const ENTITY_LABELS: Record<AuditEntry['entityType'], string> = {
   BudgetPPA: 'Budget PPA',
   Document: 'Document',
   Sinistre: 'Sinistre',
-  Connexion: 'Connexion'
+  Connexion: 'Connexion',
+  Obligation: 'Spécificités du mandat'
 };
 
 const ACTION_COLOR: Record<string, string> = {
   'Validé': 'bg-green-100 text-green-800',
+  'Validée': 'bg-green-100 text-green-800',
   'Accepté': 'bg-green-100 text-green-800',
   'Activée': 'bg-green-100 text-green-800',
   'Refusé': 'bg-red-100 text-red-800',
   'Rejeté': 'bg-red-100 text-red-800',
+  'Rejetée': 'bg-red-100 text-red-800',
   'Désactivée': 'bg-red-100 text-red-800'
 };
 
