@@ -119,22 +119,6 @@ export default function Interventions() {
     });
   };
 
-  const handleValidateIntervention = (interventionId: string) => {
-    const intervention = interventions.find(i => i.id === interventionId);
-    if (!intervention) return;
-
-    if (intervention.validationLevel < intervention.requiredValidators.length - 1) {
-      updateIntervention(interventionId, {
-        validationLevel: intervention.validationLevel + 1
-      });
-    } else {
-      updateIntervention(interventionId, {
-        status: 'En cours',
-        validationLevel: intervention.requiredValidators.length
-      });
-    }
-  };
-
   const handleAddAttachment = () => {
     const fileName = `document-${Date.now()}.pdf`;
     setNewIntervention(prev => ({

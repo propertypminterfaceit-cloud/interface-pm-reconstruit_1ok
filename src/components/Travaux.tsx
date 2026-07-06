@@ -6,7 +6,7 @@ import { getMandatForSite } from '../utils/permissions';
 import { computeChantierFee } from '../utils/feeSchedule';
 
 export default function Travaux() {
-  const { interventions, sites, currentRole, currentUser, addDocument, updateIntervention, prestataires, addIntervention, users, feeSchedules, obligations, addAuditEntry } = useStore();
+  const { interventions, sites, currentRole, currentUser, addDocument, updateDocument, documents, updateIntervention, prestataires, addIntervention, users, feeSchedules, obligations, addAuditEntry } = useStore();
   
   // 🔒 VALIDATION DES DÉPENDANCES CRITIQUES
   if (!Array.isArray(interventions) || !Array.isArray(sites) || !currentRole) {
@@ -113,6 +113,75 @@ export default function Travaux() {
   // valide en premier, puis le DT, puis le Propriétaire, dans cet ordre.
   // Compte réel des devis déjà uploadés — nécessaire pour bloquer la
   // validation tant que le nombre de devis requis n'est pas atteint.
+  // Retrouve le document réel (dans la data room) correspondant à un type
+  // donné pour cette intervention — le plus récent s'il y en a plusieurs.
+  const getInterventionDocument = (interventionId: string, docType: 'devis' | 'cr' | 'doe' | 'pv') => {
+    const matches = (documents || []).filter((d: any) => d.interventionId === interventionId && d.documentType === docType);
+    return matches.length > 0 ? matches[matches.length - 1] : null;
+  };
+
+  // Valider (signer) un document d'intervention. Signer le PV de réception
+  // "tamponne" le document ET clôture définitivement la ligne de travaux —
+  // c'est la seule pièce qui a cet effet, les autres (devis, CR, DOE) ne font
+  // qu'avancer les prérequis de validation.
+  const handleValidateInterventionDocument = (intervention: any, docType: 'devis' | 'cr' | 'doe' | 'pv') => {
+    const doc = getInterventionDocument(intervention.id, docType);
+    if (!doc) return;
+    const now = new Date().toLocaleString('fr-FR');
+
+    updateDocument(doc.id, {
+      status: 'Validé',
+      validatedByName: currentUser?.name || currentRole,
+      validatedAt: now
+    });
+
+    if (docType === 'pv') {
+      updateIntervention(intervention.id, { status: 'Clôturée' });
+    }
+
+    addAuditEntry({
+      id: Date.now().toString(),
+      entityType: 'Document',
+      entityId: doc.id,
+      entityLabel: `${doc.name} — ${intervention.siteName}`,
+      action: docType === 'pv' ? 'PV signé — intervention clôturée' : 'Document signé',
+      performedByName: currentUser?.name || currentRole,
+      performedByRole: currentRole,
+      timestamp: now
+    });
+  };
+
+  const renderDocTypeRow = (intervention: any, docType: 'cr' | 'doe' | 'pv', label: string) => {
+    const doc = getInterventionDocument(intervention.id, docType);
+    const canSign = currentRole === 'PM' || currentRole === 'DT';
+
+    return (
+      <div className="flex items-center justify-between text-xs">
+        <span className="w-12 text-gray-600 flex-shrink-0">{label}:</span>
+        {!doc ? (
+          <span className="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-500">Non fourni</span>
+        ) : doc.status === 'Validé' ? (
+          <span className="px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" title={`Signé par ${doc.validatedByName} le ${doc.validatedAt}`}>
+            ✓ Signé
+          </span>
+        ) : (
+          <div className="flex items-center gap-1">
+            <span className="px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-800">Reçu</span>
+            {canSign && (
+              <button
+                onClick={() => handleValidateInterventionDocument(intervention, docType)}
+                className="px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                title={docType === 'pv' ? 'Signer le PV clôture définitivement cette ligne' : 'Signer ce document'}
+              >
+                {docType === 'pv' ? 'Signer (clôture)' : 'Signer'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const getDevisCount = (intervention: any): number => {
     if (!Array.isArray(intervention.documents)) return 0;
     return intervention.documents.filter((d: any) => typeof d === 'string' && d.includes('devis')).length;
@@ -184,7 +253,7 @@ export default function Travaux() {
   };
 
   const handleUploadDocument = () => {
-    if (!newDocument.interventionId || !newDocument.name.trim()) return;
+    if (!newDocument.interventionId) return;
     
     // Générer automatiquement le nom du document
     const intervention = Array.isArray(roleInterventions) ? 
@@ -668,49 +737,13 @@ export default function Travaux() {
                       </div>
                       
                       {/* Compte-rendu */}
-                      <div className="flex items-center text-xs">
-                        <span className="w-12 text-gray-600">CR:</span>
-                        <div className="flex items-center space-x-1">
-                          {(() => {
-                            if (!intervention || !Array.isArray(intervention.documents)) {
-                              return <span className="px-1 py-0.5 rounded text-xs bg-gray-100 text-gray-500">○</span>;
-                            }
-                            const crDocs = intervention.documents
-                              .filter(d => typeof d === 'string')
-                              .filter(d => d.includes('cr') || d.includes('compte-rendu'));
-                            if (!Array.isArray(crDocs) || crDocs.length === 0) {
-                              return <span className="px-1 py-0.5 rounded text-xs bg-gray-100 text-gray-500">○</span>;
-                            }
-                            return crDocs.map((_, index) => (
-                              <span key={index} className="px-1 py-0.5 rounded text-xs bg-green-100 text-green-800">
-                                {index + 1}
-                              </span>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-                      
+                      {renderDocTypeRow(intervention, 'cr', 'CR')}
+
                       {/* DOE */}
-                      <div className="flex items-center text-xs">
-                        <span className="w-12 text-gray-600">DOE:</span>
-                        <span className={`px-1 py-0.5 rounded text-xs ${
-                          (intervention && Array.isArray(intervention.documents) && intervention.documents.filter(d => typeof d === 'string').some(d => d.includes('doe'))) ? 
-                          'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {(intervention && Array.isArray(intervention.documents) && intervention.documents.filter(d => typeof d === 'string').some(d => d.includes('doe'))) ? '✓' : '○'}
-                        </span>
-                      </div>
-                      
-                      {/* PV */}
-                      <div className="flex items-center text-xs">
-                        <span className="w-12 text-gray-600">PV:</span>
-                        <span className={`px-1 py-0.5 rounded text-xs ${
-                          (intervention && Array.isArray(intervention.documents) && intervention.documents.filter(d => typeof d === 'string').some(d => d.includes('pv'))) ? 
-                          'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {(intervention && Array.isArray(intervention.documents) && intervention.documents.filter(d => typeof d === 'string').some(d => d.includes('pv'))) ? '✓' : '○'}
-                        </span>
-                      </div>
+                      {renderDocTypeRow(intervention, 'doe', 'DOE')}
+
+                      {/* PV de réception — sa signature clôture la ligne */}
+                      {renderDocTypeRow(intervention, 'pv', 'PV')}
                     </div>
                   </td>
                   {currentRole === 'Prestataire' && (
