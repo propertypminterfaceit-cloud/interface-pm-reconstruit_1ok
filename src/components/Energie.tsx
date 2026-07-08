@@ -164,6 +164,9 @@ export default function Energie() {
               <h1 className="text-xl font-bold text-gray-900 flex items-center"><Gauge className="w-5 h-5 mr-2 text-blue-600" />{selectedSite.name}</h1>
               <p className="text-sm text-gray-500">{selectedSite.address}</p>
               <div className="mt-2">{statusBadge(connector?.status)}</div>
+              {isConnected && connector && (
+                <p className="text-xs text-gray-500 mt-1">Connecté à : <span className="font-medium text-gray-700">{connector.provider}</span></p>
+              )}
               {isConnected && connector?.lastSync && <p className="text-xs text-gray-400 mt-1">Dernière synchro : {connector.lastSync}</p>}
             </div>
 

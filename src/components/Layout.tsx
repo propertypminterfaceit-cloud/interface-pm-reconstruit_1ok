@@ -304,6 +304,26 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center space-x-3">
               <NotificationCenter onNavigate={setActiveTab} />
 
+              {/* Réinitialise les données de démo persistées dans le navigateur —
+                  nécessaire quand une mise à jour améliore les données mock
+                  elles-mêmes (pas juste un nouveau champ), qui sinon restent
+                  bloquées sur l'ancienne valeur déjà sauvegardée. */}
+              {isDemoMode && (
+                <button
+                  onClick={() => {
+                    if (window.confirm("Réinitialiser toutes les données de démo à leur état d'origine ? Toute modification que vous avez faite dans cette session sera perdue.")) {
+                      useStore.persist.clearStorage();
+                      window.location.reload();
+                    }
+                  }}
+                  className="flex items-center px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  title="Réinitialiser les données de démo"
+                >
+                  <Icons.RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                  Réinitialiser
+                </button>
+              )}
+
               {/* Sélecteur de personne en mode démo — choisir une vraie personne active
                   le filtrage par actifs attribués (ex: plusieurs Asset Managers PIMCO/Allianz) */}
               {isDemoMode && (
