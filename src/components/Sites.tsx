@@ -272,6 +272,12 @@ export default function Sites() {
                   {site.mandat && (
                     <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">{site.mandat}</span>
                   )}
+                  {(site.heatingType === 'Réseau de chaleur' || site.coolingType === 'Réseau de froid') && (
+                    <span className="inline-block mt-1 ml-1 px-2 py-0.5 bg-cyan-50 text-cyan-700 text-xs rounded">
+                      {site.heatingType === 'Réseau de chaleur' && site.coolingType === 'Réseau de froid' ? 'Réseaux chaleur + froid urbains' :
+                       site.heatingType === 'Réseau de chaleur' ? 'Réseau de chaleur urbain' : 'Réseau de froid urbain'}
+                    </span>
+                  )}
                 </div>
               </div>
               <span className={`status-badge ${getStatusColor(site.status)}`}>
@@ -696,6 +702,20 @@ export default function Sites() {
                   {selectedSite.energyClass && <p><strong>Classe énergétique:</strong> {selectedSite.energyClass}</p>}
                   <p><strong>Score conformité:</strong> {selectedSite.conformityScore}%</p>
                   <p><strong>Statut:</strong> {selectedSite.status}</p>
+                  {selectedSite.heatingType && (
+                    <p>
+                      <strong>Chauffage:</strong> {selectedSite.heatingType === 'Autre' ? selectedSite.customHeatingType : selectedSite.heatingType}
+                      {selectedSite.heatingType === 'Réseau de chaleur' && ' (ex: CPCU à Paris)'}
+                      {selectedSite.heatingPower ? ` — ${selectedSite.heatingPower} kW` : ''}
+                    </p>
+                  )}
+                  {selectedSite.coolingType && (
+                    <p>
+                      <strong>Rafraîchissement:</strong> {selectedSite.coolingType === 'Autre' ? selectedSite.customCoolingType : selectedSite.coolingType}
+                      {selectedSite.coolingType === 'Réseau de froid' && ' (ex: Fraîcheur de Paris)'}
+                      {selectedSite.coolingPower ? ` — ${selectedSite.coolingPower} kW` : ''}
+                    </p>
+                  )}
                   <div className="pt-2 border-t border-gray-200 mt-2">
                     <strong>Mandat :</strong>{' '}
                     {currentRole === 'DT' ? (

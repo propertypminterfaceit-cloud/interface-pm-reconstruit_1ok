@@ -342,6 +342,8 @@ export interface EnergyReading {
   electricityKwh: number;
   gasKwh: number;
   waterM3: number;
+  heatNetworkKwh?: number; // réseau de chaleur urbain (ex: CPCU à Paris)
+  coldNetworkKwh?: number; // réseau de froid urbain (ex: Fraîcheur de Paris)
   cost: number;
   co2Kg: number;
   peakPowerKw: number;

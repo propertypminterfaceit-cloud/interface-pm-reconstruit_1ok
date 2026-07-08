@@ -54,18 +54,31 @@ function addDaysToToday(days: number): string {
 }
 
 export function generateEnergyReadingsForSite(site: Site, source: string): EnergyReading[] {
-  const months = ['2023-08', '2023-09', '2023-10', '2023-11', '2023-12', '2024-01'];
+  const months = [
+    '2023-02', '2023-03', '2023-04', '2023-05', '2023-06', '2023-07',
+    '2023-08', '2023-09', '2023-10', '2023-11', '2023-12', '2024-01'
+  ];
   const isChauffé = site.typologie.includes('HOTEL') || site.typologie.includes('TERTIAIRE');
   const baseKwhPerM2 = site.typologie.includes('LOGISTIQUE') ? 0.9 : 1.6;
+  const onHeatNetwork = site.heatingType === 'Réseau de chaleur';
+  const onColdNetwork = site.coolingType === 'Réseau de froid';
 
   return months.map((month, index) => {
-    const monthIndex = index; // 0 = août (été) ... 5 = janvier (hiver)
-    const seasonalFactor = isChauffé ? 1 + (monthIndex / 5) * 0.6 : 1 + (monthIndex / 5) * 0.15;
+    const calendarMonth = parseInt(month.slice(5, 7), 10); // 1 = janvier ... 12 = décembre
+    // Cycle saisonnier réaliste : pic de chauffage en hiver (déc-fév), pic de
+    // froid en été (juin-août) — plutôt qu'une simple pente linéaire.
+    const heatingSeason = Math.max(0, Math.cos(((calendarMonth - 1) / 12) * 2 * Math.PI));
+    const coolingSeason = Math.max(0, -Math.cos(((calendarMonth - 1) / 12) * 2 * Math.PI));
+    const seasonalFactor = isChauffé ? 1 + heatingSeason * 0.6 : 1 + heatingSeason * 0.15;
+    const coolingFactor = 1 + coolingSeason * 0.6;
     const electricityKwh = Math.round(site.surface * baseKwhPerM2 * seasonalFactor);
-    const gasKwh = isChauffé ? Math.round(site.surface * 0.8 * seasonalFactor) : 0;
+    // Le chauffage passe soit par le gaz, soit par le réseau de chaleur urbain — jamais les deux.
+    const gasKwh = (isChauffé && !onHeatNetwork) ? Math.round(site.surface * 0.8 * seasonalFactor) : 0;
+    const heatNetworkKwh = (isChauffé && onHeatNetwork) ? Math.round(site.surface * 0.8 * seasonalFactor) : undefined;
+    const coldNetworkKwh = onColdNetwork ? Math.round(site.surface * 0.25 * coolingFactor) : undefined;
     const waterM3 = Math.round(site.surface * 0.015);
-    const cost = Math.round(electricityKwh * 0.19 + gasKwh * 0.09);
-    const co2Kg = Math.round(electricityKwh * 0.052 + gasKwh * 0.201);
+    const cost = Math.round(electricityKwh * 0.19 + gasKwh * 0.09 + (heatNetworkKwh || 0) * 0.11 + (coldNetworkKwh || 0) * 0.13);
+    const co2Kg = Math.round(electricityKwh * 0.052 + gasKwh * 0.201 + (heatNetworkKwh || 0) * 0.105);
     const peakPowerKw = Math.round((electricityKwh / 30 / 24) * 3.2);
 
     return {
@@ -76,6 +89,8 @@ export function generateEnergyReadingsForSite(site: Site, source: string): Energ
       electricityKwh,
       gasKwh,
       waterM3,
+      heatNetworkKwh,
+      coldNetworkKwh,
       cost,
       co2Kg,
       peakPowerKw,
@@ -312,6 +327,8 @@ export function generateMockData() {
       surface: 120000,
       year: 1973,
       energyClass: 'C',
+      heatingType: 'Réseau de chaleur',
+      coolingType: 'Réseau de froid',
       pmResponsible: '1',
       dtResponsible: '5',
       prestataire: '1',
